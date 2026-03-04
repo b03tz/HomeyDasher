@@ -71,14 +71,24 @@ function getAlpha(key: keyof WidgetTheme): number {
   return parseColor(props.theme[key]).alpha;
 }
 
-// Copy / Paste
+// In-memory fallback when clipboard API is unavailable (plain HTTP)
+let themeClipboard: string | null = null;
+
 async function copyTheme() {
-  await navigator.clipboard.writeText(JSON.stringify(props.theme));
+  const json = JSON.stringify(props.theme);
+  themeClipboard = json;
+  try {
+    await navigator.clipboard.writeText(json);
+  } catch { /* secure context unavailable, in-memory copy still works */ }
 }
 
 async function pasteTheme() {
   try {
-    const text = await navigator.clipboard.readText();
+    let text = themeClipboard;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch { /* fall back to in-memory clipboard */ }
+    if (!text) return;
     const parsed = JSON.parse(text);
     const valid: WidgetTheme = {};
     const keys: (keyof WidgetTheme)[] = [
@@ -89,7 +99,7 @@ async function pasteTheme() {
       if (typeof parsed[k] === "string") valid[k] = parsed[k];
     }
     emit("update:theme", valid);
-  } catch { /* ignore invalid clipboard */ }
+  } catch { /* ignore invalid data */ }
 }
 
 function resetTheme() {
