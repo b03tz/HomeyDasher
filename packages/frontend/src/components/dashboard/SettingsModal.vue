@@ -1,10 +1,24 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import { useDashboardStore } from "../../stores/dashboard";
+import { useToast } from "../../composables/useToast";
+import { resolveIcon } from "../../utils/iconResolver";
+import { LayoutDashboard } from "lucide-vue-next";
+import IconPicker from "./IconPicker.vue";
 
 defineProps<{ open: boolean }>();
-const emit = defineEmits<{ close: [] }>();
+const emit = defineEmits<{ close: []; openDevInspector: [] }>();
 
 const dashboardStore = useDashboardStore();
+const toast = useToast();
+
+// Dashboard management state
+const newDashboardName = ref("");
+const addingDashboard = ref(false);
+const iconPickerOpen = ref(false);
+const iconPickerTargetId = ref("");
+const editingNameId = ref("");
+const editingNameValue = ref("");
 
 function onColumnsChange(event: Event) {
   const value = parseInt((event.target as HTMLInputElement).value);
@@ -29,6 +43,52 @@ function onRadiusChange(event: Event) {
 async function resetLocations() {
   await dashboardStore.resetWidgetLocations();
 }
+
+// Dashboard management
+async function addDashboard() {
+  const name = newDashboardName.value.trim();
+  if (!name) return;
+  await dashboardStore.createDashboard(name);
+  newDashboardName.value = "";
+  addingDashboard.value = false;
+  toast.show("Dashboard created", "success");
+}
+
+function startEditName(id: string, currentName: string) {
+  editingNameId.value = id;
+  editingNameValue.value = currentName;
+}
+
+async function saveName(id: string) {
+  const name = editingNameValue.value.trim();
+  if (name) {
+    await dashboardStore.updateDashboardEntry(id, { name });
+  }
+  editingNameId.value = "";
+}
+
+function openIconPicker(id: string) {
+  iconPickerTargetId.value = id;
+  iconPickerOpen.value = true;
+}
+
+async function onIconPicked(iconName: string) {
+  if (iconPickerTargetId.value) {
+    await dashboardStore.updateDashboardEntry(iconPickerTargetId.value, { icon: iconName });
+  }
+}
+
+async function switchTo(id: string) {
+  await dashboardStore.switchDashboard(id);
+  toast.show("Dashboard switched", "success");
+}
+
+async function removeDashboard(id: string) {
+  if (dashboardStore.dashboards.length <= 1) return;
+  if (!confirm("Delete this dashboard and all its widgets?")) return;
+  await dashboardStore.deleteDashboard(id);
+  toast.show("Dashboard deleted", "success");
+}
 </script>
 
 <template>
@@ -41,6 +101,86 @@ async function resetLocations() {
         </div>
 
         <div class="settings-body">
+          <!-- Dashboards section -->
+          <section class="settings-section">
+            <h3 class="section-title">Dashboards</h3>
+
+            <div class="dashboard-list">
+              <div
+                v-for="db in dashboardStore.dashboards"
+                :key="db.id"
+                class="dashboard-row"
+                :class="{ active: db.id === dashboardStore.activeDashboardId }"
+              >
+                <button class="dashboard-icon-btn" @click="openIconPicker(db.id)">
+                  <component
+                    :is="db.icon ? resolveIcon(db.icon) || LayoutDashboard : LayoutDashboard"
+                    :size="18"
+                  />
+                </button>
+
+                <div class="dashboard-name" v-if="editingNameId !== db.id" @click="startEditName(db.id, db.name)">
+                  {{ db.name }}
+                </div>
+                <input
+                  v-else
+                  v-model="editingNameValue"
+                  class="dashboard-name-input"
+                  @blur="saveName(db.id)"
+                  @keyup.enter="saveName(db.id)"
+                  autofocus
+                />
+
+                <span v-if="db.id === dashboardStore.activeDashboardId" class="active-badge">Active</span>
+
+                <div class="dashboard-actions">
+                  <button
+                    v-if="db.id !== dashboardStore.activeDashboardId"
+                    class="dash-action-btn"
+                    title="Switch to this dashboard"
+                    @click="switchTo(db.id)"
+                  >
+                    Switch
+                  </button>
+                  <button
+                    class="dash-action-btn danger"
+                    title="Delete dashboard"
+                    :disabled="dashboardStore.dashboards.length <= 1"
+                    @click="removeDashboard(db.id)"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="addingDashboard" class="add-dashboard-row">
+              <input
+                v-model="newDashboardName"
+                class="dashboard-name-input"
+                placeholder="Dashboard name..."
+                @keyup.enter="addDashboard"
+                autofocus
+              />
+              <button class="dash-action-btn" @click="addDashboard">Add</button>
+              <button class="dash-action-btn" @click="addingDashboard = false">Cancel</button>
+            </div>
+            <button
+              v-else
+              class="add-dashboard-btn"
+              @click="addingDashboard = true"
+            >
+              + Add Dashboard
+            </button>
+          </section>
+
+          <IconPicker
+            :open="iconPickerOpen"
+            :model-value="dashboardStore.dashboards.find(d => d.id === iconPickerTargetId)?.icon"
+            @update:model-value="onIconPicked"
+            @close="iconPickerOpen = false"
+          />
+
           <section class="settings-section">
             <h3 class="section-title">Grid Settings</h3>
 
@@ -111,6 +251,13 @@ async function resetLocations() {
                 @input="onRadiusChange"
               />
             </div>
+          </section>
+
+          <section class="settings-section">
+            <h3 class="section-title">Developer</h3>
+            <button class="dev-inspector-btn" @click="emit('openDevInspector'); emit('close')">
+              Open Device Inspector
+            </button>
           </section>
 
           <section class="settings-section danger-zone">
@@ -262,6 +409,25 @@ async function resetLocations() {
   border: none;
 }
 
+.dev-inspector-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+  font-family: monospace;
+}
+
+.dev-inspector-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .danger-zone {
   border-top: 1px solid var(--border);
   padding-top: 20px;
@@ -287,5 +453,146 @@ async function resetLocations() {
 .danger-btn:hover {
   background: var(--danger);
   color: white;
+}
+
+/* Dashboard management */
+.dashboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dashboard-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.dashboard-row.active {
+  border-color: var(--accent);
+}
+
+.dashboard-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dashboard-icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dashboard-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-name:hover {
+  color: var(--accent);
+}
+
+.dashboard-name-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  min-width: 0;
+}
+
+.active-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dash-action-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.dash-action-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dash-action-btn.danger {
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.dash-action-btn.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.dash-action-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.add-dashboard-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.add-dashboard-btn {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.add-dashboard-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 </style>

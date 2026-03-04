@@ -11,12 +11,23 @@ export interface WidgetDeviceRef {
   sliderCapabilityId?: string;
 }
 
+export interface WidgetTheme {
+  background?: string;       // overrides --bg-card
+  foreground?: string;       // overrides --text-primary
+  secondaryText?: string;    // overrides --text-secondary (units, labels)
+  borderColor?: string;      // overrides --border
+  accentColor?: string;      // overrides --accent (slider knob, knob arc, gauge arc, etc.)
+  subBackground?: string;    // overrides --bg-secondary (switch buttons, status dots, container children)
+  sliderFillColor?: string;  // slider filled track left of thumb
+}
+
 export interface BaseWidget {
   id: string;
   type: string;
   title: string;
   hideTitle?: boolean;
   position: WidgetPosition;
+  theme?: WidgetTheme;
 }
 
 export interface SwitchWidget extends BaseWidget {
@@ -60,11 +71,14 @@ export interface NumberWidget extends BaseWidget {
   };
 }
 
+export type StatusDisplayMode = "list" | "led";
+
 export interface StatusWidget extends BaseWidget {
   type: "status";
   config: {
     devices: { deviceId: string; capabilityId: string }[];
     reverseColors?: boolean;
+    displayMode?: StatusDisplayMode;
   };
 }
 
@@ -106,11 +120,16 @@ export interface KnobWidget extends BaseWidget {
   };
 }
 
+export interface ButtonFlowRef {
+  flowId: string;
+  label?: string;
+  color?: string;
+}
+
 export interface ButtonWidget extends BaseWidget {
   type: "button";
   config: {
-    flowId: string;
-    color?: string;
+    flows: ButtonFlowRef[];
   };
 }
 
@@ -171,11 +190,20 @@ export interface LiveChartWidget extends BaseWidget {
   };
 }
 
+export interface EnumWidget extends BaseWidget {
+  type: "enum";
+  config: {
+    deviceId: string;
+    capabilityId: string;
+    displayMode: "popup" | "scroll";
+  };
+}
+
 export interface ContainerWidget extends BaseWidget {
   type: "container";
   config: {
-    gridColumns: number;  // 2–6
-    gridRows: number;     // 1–6
+    gridColumns: number;  // 2–8
+    gridRows: number;     // 1–8
     widgets: DashboardWidget[];
   };
 }
@@ -193,10 +221,14 @@ export type DashboardWidget =
   | WeatherWidget
   | ClockWidget
   | LiveChartWidget
-  | ContainerWidget;
+  | EnumWidget
+  | ContainerWidget
+  | DashboardSwitchWidget
+  | TextWidget;
 
 export interface DashboardConfig {
   widgets: DashboardWidget[];
+  grid?: GridConfig;
 }
 
 export interface GridConfig {
@@ -206,9 +238,25 @@ export interface GridConfig {
   borderRadius?: number; // widget border-radius in px, 0–12 (default 12)
 }
 
+export interface TextWidget extends BaseWidget {
+  type: "text";
+  config: {
+    content?: string;
+    html?: boolean;
+  };
+}
+
+export interface DashboardSwitchWidget extends BaseWidget {
+  type: "dashboard-switch";
+  config: {
+    targetDashboardId: string;
+  };
+}
+
 export interface DashboardEntry {
   id: string;
   name: string;
+  icon?: string;
 }
 
 export interface AppConfig {

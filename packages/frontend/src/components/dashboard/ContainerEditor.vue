@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import type { DashboardWidget } from "@homecontrol/shared";
+import type { DashboardWidget, WidgetTheme } from "@homecontrol/shared";
 import { getEffectiveColSpan, getEffectiveRowSpan } from "../../utils/widgetSize";
 import { getOccupiedCells } from "../../utils/gridUtils";
 import { useGridDrag } from "../../composables/useGridDrag";
@@ -17,6 +17,9 @@ import GroupStatusWidget from "./widgets/GroupStatusWidget.vue";
 import WeatherWidget from "./widgets/WeatherWidget.vue";
 import ClockWidget from "./widgets/ClockWidget.vue";
 import LiveChartWidget from "./widgets/LiveChartWidget.vue";
+import TextWidget from "./widgets/TextWidget.vue";
+import EnumWidget from "./widgets/EnumWidget.vue";
+import DashboardSwitchWidget from "./widgets/DashboardSwitchWidget.vue";
 
 const props = defineProps<{
   gridColumns: number;
@@ -66,12 +69,26 @@ const {
   },
 });
 
+function themeStyle(theme?: WidgetTheme): Record<string, string> {
+  if (!theme) return {};
+  const m: Record<string, string> = {};
+  if (theme.background) m["--bg-card"] = theme.background;
+  if (theme.foreground) m["--text-primary"] = theme.foreground;
+  if (theme.secondaryText) m["--text-secondary"] = theme.secondaryText;
+  if (theme.borderColor) m["--border"] = theme.borderColor;
+  if (theme.accentColor) m["--accent"] = theme.accentColor;
+  if (theme.subBackground) m["--bg-secondary"] = theme.subBackground;
+  if (theme.sliderFillColor) m["--widget-slider-fill"] = theme.sliderFillColor;
+  return m;
+}
+
 function gridStyle(widget: DashboardWidget) {
   const colSpan = getEffectiveColSpan(widget);
   const rowSpan = getEffectiveRowSpan(widget);
   return {
     gridColumn: `${widget.position.col} / span ${colSpan}`,
     gridRow: `${widget.position.row} / span ${rowSpan}`,
+    ...themeStyle(widget.theme),
   };
 }
 
@@ -373,6 +390,9 @@ function done() {
               <WeatherWidget v-else-if="widget.type === 'weather'" :widget="widget" />
               <ClockWidget v-else-if="widget.type === 'clock'" :widget="widget" />
               <LiveChartWidget v-else-if="widget.type === 'live-chart'" :widget="widget" />
+              <EnumWidget v-else-if="widget.type === 'enum'" :widget="widget" />
+              <TextWidget v-else-if="widget.type === 'text'" :widget="widget" />
+              <DashboardSwitchWidget v-else-if="widget.type === 'dashboard-switch'" :widget="widget" />
             </div>
 
             <!-- Drag / settings zones -->
@@ -456,6 +476,7 @@ function done() {
   flex-direction: column;
   padding: 16px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .editor-header {
@@ -509,6 +530,7 @@ function done() {
   position: relative;
   touch-action: none;
   user-select: none;
+  min-height: 0;
 }
 
 .editor-grid.placement-mode {

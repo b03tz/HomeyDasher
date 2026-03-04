@@ -48,6 +48,13 @@ function onInput(e: Event) {
   }, 250);
 }
 
+const fillPct = computed(() => {
+  const range = max.value - min.value;
+  if (range <= 0) return "0%";
+  const pct = ((localValue.value - min.value) / range) * 100;
+  return `${Math.max(0, Math.min(100, pct))}%`;
+});
+
 const displayValue = computed(() => {
   const v = localValue.value;
   if (Number.isInteger(v)) return v.toString();
@@ -70,6 +77,7 @@ const displayValue = computed(() => {
         :max="max"
         :step="step"
         :value="localValue"
+        :style="{ '--fill-pct': fillPct } as any"
         @input="onInput"
       />
     </div>
@@ -119,7 +127,11 @@ const displayValue = computed(() => {
   height: 6px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--border);
+  background: linear-gradient(to right,
+    var(--widget-slider-fill, var(--accent)) 0%,
+    var(--widget-slider-fill, var(--accent)) var(--fill-pct, 0%),
+    var(--border) var(--fill-pct, 0%),
+    var(--border) 100%);
   border-radius: 3px;
   outline: none;
   cursor: pointer;
@@ -144,5 +156,10 @@ const displayValue = computed(() => {
   cursor: pointer;
   border: 2px solid var(--bg-card);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.slider-range::-moz-range-track {
+  background: transparent;
+  height: 6px;
 }
 </style>

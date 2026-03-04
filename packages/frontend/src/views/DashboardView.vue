@@ -19,6 +19,32 @@ onUnmounted(() => {
   socket.off("disconnect", onDisconnect);
 });
 
+/* ── Header hide / show ── */
+const headerHidden = ref(false);
+const practiceModalOpen = ref(false);
+const practicePillTapped = ref(false);
+
+function requestHideHeader() {
+  practicePillTapped.value = false;
+  practiceModalOpen.value = true;
+}
+
+function onPracticePillTap() {
+  practicePillTapped.value = true;
+  setTimeout(() => {
+    practiceModalOpen.value = false;
+    headerHidden.value = true;
+  }, 600);
+}
+
+function showHeader() {
+  headerHidden.value = false;
+}
+
+function cancelHide() {
+  practiceModalOpen.value = false;
+}
+
 const statusClass = computed(() => {
   if (!socketConnected.value) return "disconnected";
   if (homeyStatus.value === "reconnecting") return "reconnecting";
@@ -64,6 +90,11 @@ function closeWizard() {
 
 const isEmpty = computed(() => dashboardStore.loaded && dashboardStore.widgets.length === 0);
 
+const headerTitle = computed(() => {
+  const active = dashboardStore.dashboards.find((d) => d.id === dashboardStore.activeDashboardId);
+  return active?.name || "HomeControl";
+});
+
 function onWidgetPlaced() {
   dashboardStore.editMode = true;
 }
@@ -71,10 +102,26 @@ function onWidgetPlaced() {
 
 <template>
   <div class="dashboard">
-    <header class="app-header">
-      <h1>HomeControl</h1>
+    <!-- Pill handle to restore hidden header -->
+    <button
+      v-if="headerHidden"
+      class="header-pill"
+      aria-label="Show toolbar"
+      @click="showHeader"
+    />
+
+    <header class="app-header" :class="{ hidden: headerHidden }">
+      <h1>{{ headerTitle }}</h1>
       <div class="header-actions">
-        <button class="dev-btn" @click="devInspectorOpen = true">DEV</button>
+        <button
+          class="header-icon-btn hide-header-btn"
+          aria-label="Hide toolbar"
+          @click="requestHideHeader"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+        </button>
         <button
           class="header-icon-btn"
           aria-label="Settings"
@@ -83,6 +130,17 @@ function onWidgetPlaced() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+        <button
+          class="header-icon-btn"
+          :class="{ active: dashboardStore.editMode }"
+          aria-label="Toggle edit mode"
+          @click="dashboardStore.toggleEditMode()"
+        >
+          <!-- Pencil icon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
           </svg>
         </button>
         <button
@@ -95,13 +153,6 @@ function onWidgetPlaced() {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-        </button>
-        <button
-          class="edit-btn"
-          :class="{ active: dashboardStore.editMode }"
-          @click="dashboardStore.toggleEditMode()"
-        >
-          {{ dashboardStore.editMode ? "Done" : "Edit" }}
         </button>
         <span class="status-dot" :class="statusClass" :title="statusTitle" />
       </div>
@@ -137,7 +188,30 @@ function onWidgetPlaced() {
     <SettingsModal
       :open="settingsOpen"
       @close="settingsOpen = false"
+      @open-dev-inspector="devInspectorOpen = true"
     />
+
+    <!-- Practice modal for hiding the header -->
+    <Teleport to="body">
+      <div v-if="practiceModalOpen" class="practice-overlay" @click.self="cancelHide">
+        <div class="practice-modal">
+          <template v-if="!practicePillTapped">
+            <p class="practice-title">Hide the toolbar?</p>
+            <p class="practice-text">
+              To show it again, tap the small handle at the top of the screen.
+            </p>
+            <p class="practice-text practice-cta">Try it now! Tap the handle below:</p>
+            <div class="practice-pill-area">
+              <button class="practice-pill" @click="onPracticePillTap" />
+            </div>
+            <button class="practice-cancel" @click="cancelHide">Cancel</button>
+          </template>
+          <template v-else>
+            <p class="practice-title practice-success">Got it!</p>
+          </template>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -170,24 +244,6 @@ function onWidgetPlaced() {
   gap: 8px;
 }
 
-.dev-btn {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-family: monospace;
-  letter-spacing: 0.05em;
-}
-
-.dev-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .header-icon-btn {
   display: flex;
   align-items: center;
@@ -207,25 +263,7 @@ function onWidgetPlaced() {
   color: var(--accent);
 }
 
-.edit-btn {
-  min-width: var(--touch-min, 48px);
-  min-height: var(--touch-min, 48px);
-  padding: 4px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.edit-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.edit-btn.active {
+.header-icon-btn.active {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
@@ -271,5 +309,173 @@ function onWidgetPlaced() {
   flex-direction: column;
   padding: var(--grid-gap);
   min-height: 0;
+}
+
+/* ── Header hide / show ── */
+.app-header {
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.app-header.hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+}
+
+.hide-header-btn {
+  border: none !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  opacity: 0.5;
+}
+
+.hide-header-btn:hover {
+  opacity: 1;
+}
+
+/* Pill handle */
+.header-pill {
+  position: fixed;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text-secondary);
+  opacity: 0.35;
+  border: none;
+  cursor: pointer;
+  z-index: 1000;
+  padding: 0;
+  transition: opacity 0.2s, width 0.2s;
+  /* Enlarge touch target */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-pill::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  bottom: -12px;
+}
+
+.header-pill:hover,
+.header-pill:active {
+  opacity: 0.7;
+  width: 64px;
+}
+
+</style>
+
+<style>
+/* ── Practice modal (unscoped for Teleport) ── */
+.practice-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.practice-modal {
+  background: var(--card-bg, #1e1e1e);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+}
+
+.practice-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--text-primary, #fff);
+}
+
+.practice-text {
+  color: var(--text-secondary, #aaa);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.practice-cta {
+  margin-top: 20px;
+  font-weight: 600;
+  color: var(--accent, #4fc3f7);
+}
+
+.practice-pill-area {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.practice-pill {
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text-secondary, #aaa);
+  opacity: 0.5;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s, transform 0.2s, width 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  animation: pill-pulse 1.5s ease-in-out infinite;
+}
+
+.practice-pill::before {
+  content: "";
+  position: absolute;
+  top: -16px;
+  left: -16px;
+  right: -16px;
+  bottom: -16px;
+}
+
+.practice-pill:hover,
+.practice-pill:active {
+  opacity: 0.9;
+  width: 64px;
+}
+
+@keyframes pill-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
+.practice-cancel {
+  margin-top: 8px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #333);
+  background: transparent;
+  color: var(--text-secondary, #aaa);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.practice-cancel:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.practice-success {
+  color: var(--success, #66bb6a);
+  font-size: 1.5rem;
+  margin: 16px 0;
 }
 </style>

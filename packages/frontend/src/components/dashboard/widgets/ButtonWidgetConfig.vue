@@ -1,47 +1,301 @@
 <script setup lang="ts">
-import FlowSelect from "../FlowSelect.vue";
+import { ref, computed, onMounted, nextTick } from "vue";
+import type { ButtonFlowRef } from "@homecontrol/shared";
 
-defineProps<{
-  flowId: string;
-  color: string;
+const props = defineProps<{
+  flows: ButtonFlowRef[];
 }>();
 
 const emit = defineEmits<{
-  "update:flowId": [v: string];
-  "update:color": [v: string];
+  "update:flows": [flows: ButtonFlowRef[]];
 }>();
+
+const MAX_FLOWS = 8;
+
+interface FlowItem {
+  id: string;
+  name: string;
+}
+
+const allFlows = ref<FlowItem[]>([]);
+const loading = ref(false);
+const search = ref("");
+const isOpen = ref(false);
+const inputEl = ref<HTMLInputElement | null>(null);
+const dropdownStyle = ref<Record<string, string>>({});
+
+onMounted(async () => {
+  loading.value = true;
+  try {
+    const res = await fetch("/api/flows");
+    const data = await res.json();
+    allFlows.value = Object.values(data as Record<string, FlowItem>).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  } catch {
+    // ignore
+  } finally {
+    loading.value = false;
+  }
+});
+
+const filtered = computed(() => {
+  const q = search.value.toLowerCase().trim();
+  if (!q) return allFlows.value;
+  return allFlows.value.filter(f => f.name.toLowerCase().includes(q));
+});
+
+function positionDropdown() {
+  if (!inputEl.value) return;
+  const rect = inputEl.value.getBoundingClientRect();
+  dropdownStyle.value = {
+    position: "fixed",
+    top: `${rect.bottom + 4}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+  };
+}
+
+async function openDropdown() {
+  isOpen.value = true;
+  await nextTick();
+  positionDropdown();
+}
+
+function onBlur() {
+  setTimeout(() => { isOpen.value = false; }, 200);
+}
+
+function addFlow(flow: FlowItem) {
+  if (props.flows.length >= MAX_FLOWS) return;
+  emit("update:flows", [...props.flows, { flowId: flow.id }]);
+  search.value = "";
+  isOpen.value = false;
+}
+
+function removeFlow(index: number) {
+  const updated = [...props.flows];
+  updated.splice(index, 1);
+  emit("update:flows", updated);
+}
+
+function updateLabel(index: number, label: string) {
+  const updated = [...props.flows];
+  updated[index] = { ...updated[index], label: label || undefined };
+  emit("update:flows", updated);
+}
+
+function updateColor(index: number, color: string) {
+  const updated = [...props.flows];
+  updated[index] = { ...updated[index], color: color || undefined };
+  emit("update:flows", updated);
+}
+
+function flowName(flowId: string) {
+  return allFlows.value.find(f => f.id === flowId)?.name ?? "Unknown flow";
+}
+
+const remaining = computed(() => MAX_FLOWS - props.flows.length);
 </script>
 
 <template>
   <div class="button-config">
-    <FlowSelect
-      :flow-id="flowId"
-      @update:flow-id="emit('update:flowId', $event)"
-    />
+    <label class="config-label">
+      Flows ({{ props.flows.length }}/{{ MAX_FLOWS }})
+    </label>
 
-    <div class="field">
-      <label class="config-label">Button color</label>
-      <div class="color-row">
+    <div class="search-wrapper">
+      <input
+        ref="inputEl"
+        v-model="search"
+        type="text"
+        class="search-input"
+        :placeholder="loading ? 'Loading flows...' : 'Search flows...'"
+        :disabled="loading || props.flows.length >= MAX_FLOWS"
+        @input="openDropdown"
+        @focus="openDropdown"
+        @blur="onBlur"
+      />
+      <Teleport to="body">
+        <div v-if="isOpen && filtered.length > 0" class="flow-dropdown" :style="dropdownStyle">
+          <button
+            v-for="flow in filtered"
+            :key="flow.id"
+            class="flow-dropdown-item"
+            @mousedown.prevent="addFlow(flow)"
+          >
+            {{ flow.name }}
+          </button>
+        </div>
+      </Teleport>
+    </div>
+
+    <div v-if="props.flows.length > 0" class="flow-list">
+      <div
+        v-for="(ref, i) in props.flows"
+        :key="ref.flowId + i"
+        class="flow-row"
+      >
+        <span class="chip">
+          {{ flowName(ref.flowId) }}
+          <button class="chip-remove" @click="removeFlow(i)" aria-label="Remove flow">&times;</button>
+        </span>
+        <input
+          type="text"
+          class="label-input"
+          placeholder="Custom label..."
+          :value="ref.label ?? ''"
+          @input="updateLabel(i, ($event.target as HTMLInputElement).value)"
+        />
         <input
           type="color"
           class="color-picker"
-          :value="color || '#4fc3f7'"
-          @input="emit('update:color', ($event.target as HTMLInputElement).value)"
+          :value="ref.color || '#4fc3f7'"
+          @input="updateColor(i, ($event.target as HTMLInputElement).value)"
         />
-        <span class="color-value">{{ color || '#4fc3f7' }}</span>
       </div>
     </div>
+
+    <p v-if="remaining > 0 && props.flows.length > 0" class="hint">
+      {{ remaining }} more flow{{ remaining !== 1 ? 's' : '' }} allowed
+    </p>
   </div>
 </template>
 
 <style scoped>
-.button-config { display: flex; flex-direction: column; gap: 8px; }
-.config-label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
-.field { display: flex; flex-direction: column; gap: 4px; }
-.color-row { display: flex; align-items: center; gap: 8px; }
-.color-picker {
-  width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 8px;
-  background: none; cursor: pointer; padding: 2px;
+.button-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.color-value { font-size: 0.8rem; color: var(--text-secondary); font-family: monospace; }
+
+.config-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.search-wrapper {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.flow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.chip-remove:hover {
+  color: var(--danger);
+}
+
+.label-input {
+  flex: 1;
+  min-width: 80px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.label-input:focus {
+  border-color: var(--accent);
+}
+
+.color-picker {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+</style>
+
+<style>
+.flow-dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-secondary, #1e1e1e);
+  border: 1px solid var(--border, #333);
+  border-radius: 8px;
+  z-index: 10000;
+}
+
+.flow-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-primary, #fff);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flow-dropdown-item:hover {
+  background: var(--bg-card, #2a2a2a);
+  color: var(--accent, #4fc3f7);
+}
 </style>

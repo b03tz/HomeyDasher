@@ -5,7 +5,9 @@ import type {
   StatusWidget, GaugeWidget, SliderWidget, KnobWidget, ButtonWidget,
   GroupStatusWidget, WeatherWidget, ClockWidget, ContainerWidget,
   LiveChartWidget, LiveChartPeriod, LiveChartUpdateInterval,
-  WidgetDeviceRef, NumberWidgetSize, GroupStatusMode, ClockStyle, ClockDisplay,
+  DashboardSwitchWidget, TextWidget, EnumWidget,
+  WidgetDeviceRef, ButtonFlowRef, NumberWidgetSize, GroupStatusMode, ClockStyle, ClockDisplay,
+  StatusDisplayMode, WidgetTheme,
 } from "@homecontrol/shared";
 import { useDashboardStore } from "../../stores/dashboard";
 import { nextAvailableRow } from "../../utils/gridUtils";
@@ -22,7 +24,12 @@ import WeatherWidgetConfig from "./widgets/WeatherWidgetConfig.vue";
 import ClockWidgetConfig from "./widgets/ClockWidgetConfig.vue";
 import ContainerWidgetConfig from "./widgets/ContainerWidgetConfig.vue";
 import LiveChartWidgetConfig from "./widgets/LiveChartWidgetConfig.vue";
+import DashboardSwitchWidgetConfig from "./widgets/DashboardSwitchWidgetConfig.vue";
+import TextWidgetConfig from "./widgets/TextWidgetConfig.vue";
+import EnumWidgetConfig from "./widgets/EnumWidgetConfig.vue";
 import ContainerEditor from "./ContainerEditor.vue";
+import WidgetThemeEditor from "./widgets/WidgetThemeEditor.vue";
+import { useToast } from "../../composables/useToast";
 
 type WidgetCategory = "display" | "control" | "utility";
 
@@ -46,10 +53,13 @@ const WIDGET_TYPES: WidgetTypeInfo[] = [
   { type: "switch", name: "Switch", description: "Toggle on/off devices", category: "control" },
   { type: "slider", name: "Slider", description: "Dimmers, temperature, etc.", category: "control" },
   { type: "knob", name: "Knob", description: "Rotary dial for touchscreen control", category: "control" },
-  { type: "button", name: "Button", description: "Trigger a Homey flow with a tap", category: "control" },
+  { type: "button", name: "Flow Button", description: "Trigger Homey flows with a tap", category: "control" },
+  { type: "enum", name: "Enum", description: "Select from device modes & options", category: "control" },
   // Utility
-  { type: "clock", name: "Clock", description: "Analog or digital clock with date", category: "utility" },
+  { type: "clock", name: "Clock", description: "Analog or digital clock with date", category: "display" },
+  { type: "text", name: "Text", description: "Static text, HTML, or empty spacer", category: "utility" },
   { type: "container", name: "Container", description: "Group widgets in a nested mini-grid", category: "utility" },
+  { type: "dashboard-switch", name: "Dashboard Switch", description: "Quick-switch to another dashboard", category: "utility" },
 ];
 
 const CATEGORY_LABELS: Record<WidgetCategory, string> = {
@@ -148,6 +158,22 @@ const WIDGET_SVGS: Record<string, string> = {
     <rect x="34" y="8" width="20" height="12" rx="2" stroke="currentColor" stroke-width="1" opacity="0.5"/>
     <rect x="10" y="24" width="44" height="8" rx="2" stroke="currentColor" stroke-width="1" opacity="0.5"/>
   </svg>`,
+  text: `<svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="10" y1="12" x2="44" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+    <line x1="10" y1="20" x2="54" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+    <line x1="10" y1="28" x2="36" y2="28" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+  </svg>`,
+  enum: `<svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="6" width="40" height="10" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+    <rect x="12" y="15" width="40" height="10" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+    <rect x="12" y="24" width="40" height="10" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+    <circle cx="48" cy="20" r="2.5" fill="currentColor" opacity="0.7"/>
+  </svg>`,
+  "dashboard-switch": `<svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="6" width="48" height="28" rx="4" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+    <rect x="14" y="12" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+    <polyline points="40,16 46,20 40,24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+  </svg>`,
 };
 
 const props = defineProps<{
@@ -170,6 +196,7 @@ const filteredTypes = computed(() => {
 });
 
 const dashboardStore = useDashboardStore();
+const toast = useToast();
 
 const step = ref(1);
 const selectedType = ref<string>("");
@@ -201,6 +228,7 @@ const numberSize = ref<NumberWidgetSize>("medium");
 // Status state
 const statusDevices = ref<{ deviceId: string; capabilityId: string }[]>([]);
 const statusReverseColors = ref(false);
+const statusDisplayMode = ref<StatusDisplayMode>("list");
 
 // Gauge state
 const gaugeDeviceId = ref("");
@@ -229,8 +257,7 @@ const knobMax = ref<number | undefined>(undefined);
 const knobStep = ref<number | undefined>(undefined);
 
 // Button state
-const buttonFlowId = ref("");
-const buttonColor = ref("");
+const buttonFlows = ref<ButtonFlowRef[]>([]);
 
 // Group status state
 const groupDevices = ref<{ deviceId: string; capabilityId: string }[]>([]);
@@ -275,6 +302,25 @@ const containerGridRows = ref(2);
 const containerWidgets = ref<DashboardWidget[]>([]);
 const containerEditorOpen = ref(false);
 
+// Text state
+const textContent = ref("");
+const textHtml = ref(false);
+
+// Enum state
+const enumDeviceId = ref("");
+const enumCapabilityId = ref("");
+const enumDisplayMode = ref<"popup" | "scroll">("popup");
+
+// Dashboard switch state
+const dashSwitchTargetId = ref("");
+
+// Move widget state
+const movePopupOpen = ref(false);
+
+// Theme state
+const configTab = ref<"config" | "theme">("config");
+const widgetTheme = ref<WidgetTheme>({});
+
 function resetAll() {
   hideTitle.value = false;
   switchDevices.value = [];
@@ -297,6 +343,7 @@ function resetAll() {
   numberDecimals.value = undefined;
   statusDevices.value = [];
   statusReverseColors.value = false;
+  statusDisplayMode.value = "list";
   gaugeDeviceId.value = "";
   gaugeCapabilityId.value = "";
   gaugeUnit.value = "";
@@ -318,8 +365,7 @@ function resetAll() {
   knobMin.value = undefined;
   knobMax.value = undefined;
   knobStep.value = undefined;
-  buttonFlowId.value = "";
-  buttonColor.value = "";
+  buttonFlows.value = [];
   groupDevices.value = [];
   groupMode.value = "count";
   groupUnit.value = "";
@@ -349,6 +395,14 @@ function resetAll() {
   containerGridRows.value = 2;
   containerWidgets.value = [];
   containerEditorOpen.value = false;
+  textContent.value = "";
+  textHtml.value = false;
+  enumDeviceId.value = "";
+  enumCapabilityId.value = "";
+  enumDisplayMode.value = "popup";
+  dashSwitchTargetId.value = "";
+  configTab.value = "config";
+  widgetTheme.value = {};
 }
 
 watch(() => props.open, (isOpen) => {
@@ -359,6 +413,8 @@ watch(() => props.open, (isOpen) => {
     selectedType.value = props.editWidget.type;
     title.value = props.editWidget.title;
     hideTitle.value = !!props.editWidget.hideTitle;
+    widgetTheme.value = props.editWidget.theme ? { ...props.editWidget.theme } : {};
+    configTab.value = "config";
 
     if (props.editWidget.type === "switch") {
       switchDevices.value = [...props.editWidget.config.devices];
@@ -384,6 +440,7 @@ watch(() => props.open, (isOpen) => {
     } else if (props.editWidget.type === "status") {
       statusDevices.value = [...props.editWidget.config.devices];
       statusReverseColors.value = props.editWidget.config.reverseColors ?? false;
+      statusDisplayMode.value = props.editWidget.config.displayMode ?? "list";
     } else if (props.editWidget.type === "gauge") {
       gaugeDeviceId.value = props.editWidget.config.deviceId;
       gaugeCapabilityId.value = props.editWidget.config.capabilityId;
@@ -409,8 +466,7 @@ watch(() => props.open, (isOpen) => {
       knobMax.value = props.editWidget.config.max;
       knobStep.value = props.editWidget.config.step;
     } else if (props.editWidget.type === "button") {
-      buttonFlowId.value = props.editWidget.config.flowId;
-      buttonColor.value = props.editWidget.config.color ?? "";
+      buttonFlows.value = [...props.editWidget.config.flows];
     } else if (props.editWidget.type === "group-status") {
       groupDevices.value = [...props.editWidget.config.devices];
       groupMode.value = props.editWidget.config.mode;
@@ -444,6 +500,15 @@ watch(() => props.open, (isOpen) => {
       containerGridColumns.value = props.editWidget.config.gridColumns;
       containerGridRows.value = props.editWidget.config.gridRows;
       containerWidgets.value = JSON.parse(JSON.stringify(props.editWidget.config.widgets));
+    } else if (props.editWidget.type === "text") {
+      textContent.value = props.editWidget.config.content ?? "";
+      textHtml.value = props.editWidget.config.html ?? false;
+    } else if (props.editWidget.type === "enum") {
+      enumDeviceId.value = props.editWidget.config.deviceId;
+      enumCapabilityId.value = props.editWidget.config.capabilityId;
+      enumDisplayMode.value = props.editWidget.config.displayMode ?? "popup";
+    } else if (props.editWidget.type === "dashboard-switch") {
+      dashSwitchTargetId.value = props.editWidget.config.targetDashboardId;
     }
   } else {
     step.value = 1;
@@ -470,11 +535,13 @@ function buildWidget(): DashboardWidget | null {
   const defaultRow = props.externalMode
     ? nextAvailableRow(containerWidgets.value)
     : dashboardStore.nextAvailableRow();
+  const hasTheme = Object.keys(widgetTheme.value).length > 0;
   const base = {
     id: props.editWidget?.id ?? crypto.randomUUID(),
     title: title.value.trim(),
     hideTitle: hideTitle.value || undefined,
     position: props.editWidget?.position ?? { col: 1, row: defaultRow },
+    theme: hasTheme ? { ...widgetTheme.value } : undefined,
   };
 
   switch (selectedType.value) {
@@ -506,7 +573,7 @@ function buildWidget(): DashboardWidget | null {
       return { ...base, type: "number", config: { deviceId: numberDeviceId.value, capabilityId: numberCapabilityId.value, unit: numberUnit.value, multiplier: numberMultiplier.value, size: numberSize.value, decimals: numberDecimals.value } } as NumberWidget;
 
     case "status":
-      return { ...base, type: "status", config: { devices: statusDevices.value, reverseColors: statusReverseColors.value || undefined } } as StatusWidget;
+      return { ...base, type: "status", config: { devices: statusDevices.value, reverseColors: statusReverseColors.value || undefined, displayMode: statusDisplayMode.value !== "list" ? statusDisplayMode.value : undefined } } as StatusWidget;
 
     case "gauge": {
       const thresholds = (gaugeWarning.value != null || gaugeDanger.value != null)
@@ -522,7 +589,7 @@ function buildWidget(): DashboardWidget | null {
       return { ...base, type: "knob", config: { deviceId: knobDeviceId.value, capabilityId: knobCapabilityId.value, unit: knobUnit.value || undefined, min: knobMin.value, max: knobMax.value, step: knobStep.value } } as KnobWidget;
 
     case "button":
-      return { ...base, type: "button", config: { flowId: buttonFlowId.value, color: buttonColor.value || undefined } } as ButtonWidget;
+      return { ...base, type: "button", config: { flows: buttonFlows.value } } as ButtonWidget;
 
     case "group-status":
       return { ...base, type: "group-status", config: { devices: groupDevices.value, mode: groupMode.value, unit: groupUnit.value || undefined, multiplier: groupMultiplier.value !== 1 ? groupMultiplier.value : undefined } } as GroupStatusWidget;
@@ -570,6 +637,15 @@ function buildWidget(): DashboardWidget | null {
         },
       } as ContainerWidget;
 
+    case "text":
+      return { ...base, type: "text", config: { content: textContent.value || undefined, html: textHtml.value || undefined } } as TextWidget;
+
+    case "enum":
+      return { ...base, type: "enum", config: { deviceId: enumDeviceId.value, capabilityId: enumCapabilityId.value, displayMode: enumDisplayMode.value } } as EnumWidget;
+
+    case "dashboard-switch":
+      return { ...base, type: "dashboard-switch", config: { targetDashboardId: dashSwitchTargetId.value } } as DashboardSwitchWidget;
+
     default:
       return null;
   }
@@ -606,6 +682,24 @@ async function deleteWidget() {
   emit("close");
 }
 
+function openMovePopup() {
+  const others = dashboardStore.dashboards.filter((d) => d.id !== dashboardStore.activeDashboardId);
+  if (others.length === 0) {
+    toast.show("No other dashboards to move to. Create another dashboard in settings (cog in the top bar).", "warning", 4000);
+    return;
+  }
+  movePopupOpen.value = true;
+}
+
+async function moveToTarget(targetId: string) {
+  if (!props.editWidget) return;
+  await dashboardStore.moveWidgetToDashboard(props.editWidget.id, targetId);
+  movePopupOpen.value = false;
+  const targetName = dashboardStore.dashboards.find((d) => d.id === targetId)?.name ?? "dashboard";
+  toast.show(`Widget moved to "${targetName}"`, "success");
+  emit("close");
+}
+
 const isValid = () => {
   if (!title.value.trim()) return false;
   switch (selectedType.value) {
@@ -616,12 +710,15 @@ const isValid = () => {
     case "gauge": return !!gaugeDeviceId.value && !!gaugeCapabilityId.value;
     case "slider": return !!sliderDeviceId.value && !!sliderCapabilityId.value;
     case "knob": return !!knobDeviceId.value && !!knobCapabilityId.value;
-    case "button": return !!buttonFlowId.value;
+    case "button": return buttonFlows.value.length > 0;
+    case "enum": return !!enumDeviceId.value && !!enumCapabilityId.value;
     case "group-status": return groupDevices.value.length > 0;
     case "weather": return !!weatherDeviceId.value;
     case "live-chart": return !!liveChartDeviceId.value && !!liveChartCapabilityId.value;
     case "clock": return true;
+    case "text": return true;
     case "container": return true;
+    case "dashboard-switch": return !!dashSwitchTargetId.value;
     default: return false;
   }
 };
@@ -688,14 +785,37 @@ const isValid = () => {
               <span class="checkbox-label">Hide title</span>
             </label>
 
+            <!-- Config / Theme tab bar -->
+            <div class="config-tab-bar">
+              <button
+                class="config-tab-btn"
+                :class="{ active: configTab === 'config' }"
+                @click="configTab = 'config'"
+              >Config</button>
+              <button
+                class="config-tab-btn"
+                :class="{ active: configTab === 'theme' }"
+                @click="configTab = 'theme'"
+              >Theme</button>
+            </div>
+
+            <!-- Theme editor -->
+            <WidgetThemeEditor
+              v-if="configTab === 'theme'"
+              :theme="widgetTheme"
+              :widget-type="selectedType"
+              @update:theme="widgetTheme = $event"
+              @apply-to-all="dashboardStore.applyThemeToAll($event)"
+            />
+
             <SwitchWidgetConfig
-              v-if="selectedType === 'switch'"
+              v-if="configTab === 'config' && selectedType === 'switch'"
               :devices="switchDevices"
               @update:devices="switchDevices = $event"
             />
 
             <ChartWidgetConfig
-              v-if="selectedType === 'chart'"
+              v-if="configTab === 'config' && selectedType === 'chart'"
               :log-id="chartLogId"
               :resolution="chartResolution"
               :color="chartColor"
@@ -721,7 +841,7 @@ const isValid = () => {
             />
 
             <NumberWidgetConfig
-              v-if="selectedType === 'number'"
+              v-if="configTab === 'config' && selectedType === 'number'"
               :device-id="numberDeviceId"
               :capability-id="numberCapabilityId"
               :unit="numberUnit"
@@ -737,15 +857,17 @@ const isValid = () => {
             />
 
             <StatusWidgetConfig
-              v-if="selectedType === 'status'"
+              v-if="configTab === 'config' && selectedType === 'status'"
               :devices="statusDevices"
               :reverse-colors="statusReverseColors"
+              :display-mode="statusDisplayMode"
               @update:devices="statusDevices = $event"
               @update:reverse-colors="statusReverseColors = $event"
+              @update:display-mode="statusDisplayMode = $event"
             />
 
             <GaugeWidgetConfig
-              v-if="selectedType === 'gauge'"
+              v-if="configTab === 'config' && selectedType === 'gauge'"
               :device-id="gaugeDeviceId"
               :capability-id="gaugeCapabilityId"
               :unit="gaugeUnit"
@@ -767,7 +889,7 @@ const isValid = () => {
             />
 
             <SliderWidgetConfig
-              v-if="selectedType === 'slider'"
+              v-if="configTab === 'config' && selectedType === 'slider'"
               :device-id="sliderDeviceId"
               :capability-id="sliderCapabilityId"
               :unit="sliderUnit"
@@ -783,7 +905,7 @@ const isValid = () => {
             />
 
             <KnobWidgetConfig
-              v-if="selectedType === 'knob'"
+              v-if="configTab === 'config' && selectedType === 'knob'"
               :device-id="knobDeviceId"
               :capability-id="knobCapabilityId"
               :unit="knobUnit"
@@ -799,15 +921,13 @@ const isValid = () => {
             />
 
             <ButtonWidgetConfig
-              v-if="selectedType === 'button'"
-              :flow-id="buttonFlowId"
-              :color="buttonColor"
-              @update:flow-id="buttonFlowId = $event"
-              @update:color="buttonColor = $event"
+              v-if="configTab === 'config' && selectedType === 'button'"
+              :flows="buttonFlows"
+              @update:flows="buttonFlows = $event"
             />
 
             <GroupStatusWidgetConfig
-              v-if="selectedType === 'group-status'"
+              v-if="configTab === 'config' && selectedType === 'group-status'"
               :devices="groupDevices"
               :mode="groupMode"
               :unit="groupUnit"
@@ -819,13 +939,13 @@ const isValid = () => {
             />
 
             <WeatherWidgetConfig
-              v-if="selectedType === 'weather'"
+              v-if="configTab === 'config' && selectedType === 'weather'"
               :device-id="weatherDeviceId"
               @update:device-id="weatherDeviceId = $event"
             />
 
             <ClockWidgetConfig
-              v-if="selectedType === 'clock'"
+              v-if="configTab === 'config' && selectedType === 'clock'"
               :style="clockStyle"
               :display="clockDisplay"
               :show-seconds="clockShowSeconds"
@@ -837,7 +957,7 @@ const isValid = () => {
             />
 
             <LiveChartWidgetConfig
-              v-if="selectedType === 'live-chart'"
+              v-if="configTab === 'config' && selectedType === 'live-chart'"
               :device-id="liveChartDeviceId"
               :capability-id="liveChartCapabilityId"
               :period="liveChartPeriod"
@@ -873,7 +993,7 @@ const isValid = () => {
             />
 
             <ContainerWidgetConfig
-              v-if="selectedType === 'container'"
+              v-if="configTab === 'config' && selectedType === 'container'"
               :grid-columns="containerGridColumns"
               :grid-rows="containerGridRows"
               :child-count="containerWidgets.length"
@@ -881,7 +1001,49 @@ const isValid = () => {
               @update:grid-rows="containerGridRows = $event"
               @edit-contents="containerEditorOpen = true"
             />
+
+            <TextWidgetConfig
+              v-if="configTab === 'config' && selectedType === 'text'"
+              :content="textContent"
+              :html="textHtml"
+              @update:content="textContent = $event"
+              @update:html="textHtml = $event"
+            />
+
+            <EnumWidgetConfig
+              v-if="configTab === 'config' && selectedType === 'enum'"
+              :device-id="enumDeviceId"
+              :capability-id="enumCapabilityId"
+              :display-mode="enumDisplayMode"
+              @update:device-id="enumDeviceId = $event"
+              @update:capability-id="enumCapabilityId = $event"
+              @update:display-mode="enumDisplayMode = $event"
+            />
+
+            <DashboardSwitchWidgetConfig
+              v-if="configTab === 'config' && selectedType === 'dashboard-switch'"
+              :target-dashboard-id="dashSwitchTargetId"
+              @update:target-dashboard-id="dashSwitchTargetId = $event"
+            />
           </div>
+          <!-- Move popup overlay -->
+          <div v-if="movePopupOpen" class="move-popup-overlay" @click.self="movePopupOpen = false">
+            <div class="move-popup">
+              <h3>Move to Dashboard</h3>
+              <div class="move-list">
+                <button
+                  v-for="db in dashboardStore.dashboards.filter(d => d.id !== dashboardStore.activeDashboardId)"
+                  :key="db.id"
+                  class="move-item"
+                  @click="moveToTarget(db.id)"
+                >
+                  {{ db.name }}
+                </button>
+              </div>
+              <button class="btn btn-secondary move-cancel" @click="movePopupOpen = false">Cancel</button>
+            </div>
+          </div>
+
           <div class="wizard-footer">
             <button
               v-if="editWidget"
@@ -889,6 +1051,13 @@ const isValid = () => {
               @click="deleteWidget"
             >
               Delete
+            </button>
+            <button
+              v-if="editWidget && !externalMode"
+              class="btn btn-secondary"
+              @click="openMovePopup"
+            >
+              Move
             </button>
             <div class="spacer" />
             <button class="btn btn-secondary" @click="emit('close')">Cancel</button>
@@ -1177,5 +1346,94 @@ const isValid = () => {
 .btn-danger {
   background: var(--danger);
   color: white;
+}
+
+.config-tab-bar {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.config-tab-btn {
+  flex: 1;
+  padding: 7px 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.config-tab-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.config-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--accent);
+}
+
+.config-tab-btn:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+/* Move popup */
+.move-popup-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: var(--radius);
+}
+
+.move-popup {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 90%;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.move-popup h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.move-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.move-item {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+}
+
+.move-item:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-card));
+}
+
+.move-cancel {
+  align-self: flex-end;
 }
 </style>

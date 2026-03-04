@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { ContainerWidget as ContainerWidgetType } from "@homecontrol/shared";
+import type { ContainerWidget as ContainerWidgetType, WidgetTheme } from "@homecontrol/shared";
 import { getEffectiveColSpan, getEffectiveRowSpan } from "../../../utils/widgetSize";
 import WidgetHeader from "../WidgetHeader.vue";
 import SwitchWidget from "./SwitchWidget.vue";
@@ -15,6 +15,9 @@ import GroupStatusWidget from "./GroupStatusWidget.vue";
 import WeatherWidget from "./WeatherWidget.vue";
 import ClockWidget from "./ClockWidget.vue";
 import LiveChartWidget from "./LiveChartWidget.vue";
+import EnumWidget from "./EnumWidget.vue";
+import TextWidget from "./TextWidget.vue";
+import DashboardSwitchWidget from "./DashboardSwitchWidget.vue";
 
 const props = defineProps<{
   widget: ContainerWidgetType;
@@ -25,12 +28,26 @@ const miniGridStyle = computed(() => ({
   gridTemplateRows: `repeat(${props.widget.config.gridRows}, 1fr)`,
 }));
 
+function themeStyle(theme?: WidgetTheme): Record<string, string> {
+  if (!theme) return {};
+  const m: Record<string, string> = {};
+  if (theme.background) m["--bg-card"] = theme.background;
+  if (theme.foreground) m["--text-primary"] = theme.foreground;
+  if (theme.secondaryText) m["--text-secondary"] = theme.secondaryText;
+  if (theme.borderColor) m["--border"] = theme.borderColor;
+  if (theme.accentColor) m["--accent"] = theme.accentColor;
+  if (theme.subBackground) m["--bg-secondary"] = theme.subBackground;
+  if (theme.sliderFillColor) m["--widget-slider-fill"] = theme.sliderFillColor;
+  return m;
+}
+
 function childGridStyle(child: ContainerWidgetType["config"]["widgets"][number]) {
   const colSpan = getEffectiveColSpan(child);
   const rowSpan = getEffectiveRowSpan(child);
   return {
     gridColumn: `${child.position.col} / span ${colSpan}`,
     gridRow: `${child.position.row} / span ${rowSpan}`,
+    ...themeStyle(child.theme),
   };
 }
 </script>
@@ -57,6 +74,9 @@ function childGridStyle(child: ContainerWidgetType["config"]["widgets"][number])
         <WeatherWidget v-else-if="child.type === 'weather'" :widget="child" />
         <ClockWidget v-else-if="child.type === 'clock'" :widget="child" />
         <LiveChartWidget v-else-if="child.type === 'live-chart'" :widget="child" />
+        <EnumWidget v-else-if="child.type === 'enum'" :widget="child" />
+        <TextWidget v-else-if="child.type === 'text'" :widget="child" />
+        <DashboardSwitchWidget v-else-if="child.type === 'dashboard-switch'" :widget="child" />
       </div>
     </div>
   </div>

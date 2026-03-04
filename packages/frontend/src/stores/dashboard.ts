@@ -3,8 +3,10 @@ import { ref } from "vue";
 import type {
   DashboardConfig,
   DashboardWidget,
+  DashboardEntry,
   AppConfig,
   GridConfig,
+  WidgetTheme,
 } from "@homecontrol/shared";
 import { getEffectiveColSpan, getEffectiveRowSpan } from "../utils/widgetSize";
 import {
@@ -19,6 +21,8 @@ export const useDashboardStore = defineStore("dashboard", () => {
   const editMode = ref(false);
   const grid = ref<GridConfig>({ columns: 12, rows: 12 });
   const pendingWidget = ref<DashboardWidget | null>(null);
+  const dashboards = ref<DashboardEntry[]>([]);
+  const activeDashboardId = ref("");
 
   function toggleEditMode() {
     editMode.value = !editMode.value;
@@ -35,36 +39,30 @@ export const useDashboardStore = defineStore("dashboard", () => {
     const res = await fetch("/api/config");
     const data: AppConfig = await res.json();
     grid.value = data.grid;
+    dashboards.value = data.dashboards;
+    activeDashboardId.value = data.activeDashboardId;
     applyCssVars();
-  }
-
-  async function saveConfig() {
-    // Read full config, update grid, write back
-    const res = await fetch("/api/config");
-    const data: AppConfig = await res.json();
-    data.grid = grid.value;
-    await fetch("/api/config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
   }
 
   async function updateGrid(columns: number, rows: number) {
     grid.value = { ...grid.value, columns, rows };
-    await saveConfig();
+    await saveDashboard();
   }
 
   async function updateAppearance(gap: number, borderRadius: number) {
     grid.value = { ...grid.value, gap, borderRadius };
     applyCssVars();
-    await saveConfig();
+    await saveDashboard();
   }
 
   async function fetchDashboard() {
     const res = await fetch("/api/dashboard");
     const data: DashboardConfig = await res.json();
     widgets.value = data.widgets;
+    if (data.grid) {
+      grid.value = data.grid;
+      applyCssVars();
+    }
     loaded.value = true;
   }
 
@@ -72,7 +70,7 @@ export const useDashboardStore = defineStore("dashboard", () => {
     await fetch("/api/dashboard", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ widgets: widgets.value } satisfies DashboardConfig),
+      body: JSON.stringify({ widgets: widgets.value, grid: grid.value } satisfies DashboardConfig),
     });
   }
 
@@ -174,14 +172,90 @@ export const useDashboardStore = defineStore("dashboard", () => {
     }
   }
 
+  async function applyThemeToAll(theme: WidgetTheme) {
+    const hasTheme = Object.keys(theme).length > 0;
+    function apply(w: DashboardWidget) {
+      w.theme = hasTheme ? { ...theme } : undefined;
+      if (w.type === "container") {
+        for (const child of w.config.widgets) {
+          apply(child);
+        }
+      }
+    }
+    for (const w of widgets.value) {
+      apply(w);
+    }
+    await saveDashboard();
+  }
+
+  async function switchDashboard(id: string) {
+    const res = await fetch(`/api/dashboards/switch/${id}`, { method: "POST" });
+    const data = await res.json();
+    if (data.error) return;
+    activeDashboardId.value = data.activeDashboardId;
+    widgets.value = data.dashboard.widgets;
+    if (data.dashboard.grid) {
+      grid.value = data.dashboard.grid;
+      applyCssVars();
+    }
+    editMode.value = false;
+    pendingWidget.value = null;
+  }
+
+  async function createDashboard(name: string, icon?: string): Promise<DashboardEntry | null> {
+    const res = await fetch("/api/dashboards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, icon }),
+    });
+    const entry: DashboardEntry = await res.json();
+    dashboards.value.push(entry);
+    return entry;
+  }
+
+  async function updateDashboardEntry(id: string, updates: { name?: string; icon?: string }) {
+    const res = await fetch(`/api/dashboards/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    const updated: DashboardEntry = await res.json();
+    const idx = dashboards.value.findIndex((d) => d.id === id);
+    if (idx !== -1) dashboards.value[idx] = updated;
+  }
+
+  async function deleteDashboard(id: string) {
+    const res = await fetch(`/api/dashboards/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.error) return;
+    dashboards.value = dashboards.value.filter((d) => d.id !== id);
+    if (activeDashboardId.value === id) {
+      activeDashboardId.value = data.activeDashboardId;
+      await fetchDashboard();
+    }
+  }
+
+  async function moveWidgetToDashboard(widgetId: string, targetDashboardId: string) {
+    const res = await fetch("/api/dashboards/move-widget", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ widgetId, targetDashboardId }),
+    });
+    const data = await res.json();
+    if (data.error) return;
+    // Remove from local state
+    widgets.value = widgets.value.filter((w) => w.id !== widgetId);
+  }
+
   return {
     widgets,
     loaded,
     editMode,
     grid,
     pendingWidget,
+    dashboards,
+    activeDashboardId,
     fetchConfig,
-    saveConfig,
     updateGrid,
     updateAppearance,
     fetchDashboard,
@@ -200,5 +274,11 @@ export const useDashboardStore = defineStore("dashboard", () => {
     resizeWidget,
     toggleEditMode,
     resetWidgetLocations,
+    applyThemeToAll,
+    switchDashboard,
+    createDashboard,
+    updateDashboardEntry,
+    deleteDashboard,
+    moveWidgetToDashboard,
   };
 });

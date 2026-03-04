@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSocket } from "./composables/useSocket";
 import DashboardView from "./views/DashboardView.vue";
+import ToastContainer from "./components/ToastContainer.vue";
 
 // Initialize the socket connection
 useSocket();
@@ -8,6 +9,7 @@ useSocket();
 
 <template>
   <DashboardView />
+  <ToastContainer />
 </template>
 
 <style>

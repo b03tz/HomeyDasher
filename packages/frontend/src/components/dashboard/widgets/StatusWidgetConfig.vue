@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from "vue";
+import type { StatusDisplayMode } from "@homecontrol/shared";
 import { useDeviceStore } from "../../../stores/devices";
 import { useZoneStore } from "../../../stores/zones";
 
 const props = defineProps<{
   devices: { deviceId: string; capabilityId: string }[];
   reverseColors: boolean;
+  displayMode: StatusDisplayMode;
 }>();
 
 const emit = defineEmits<{
   "update:devices": [devices: { deviceId: string; capabilityId: string }[]];
   "update:reverseColors": [value: boolean];
+  "update:displayMode": [value: StatusDisplayMode];
 }>();
 
 const deviceStore = useDeviceStore();
@@ -143,6 +146,22 @@ const remaining = computed(() => MAX_DEVICES - props.devices.length);
     <p v-if="remaining > 0 && props.devices.length > 0" class="hint">
       {{ remaining }} more allowed
     </p>
+
+    <label class="config-label">Display Mode</label>
+    <div class="color-mode-picker">
+      <button
+        :class="['mode-btn', { active: displayMode === 'list' }]"
+        @click="emit('update:displayMode', 'list')"
+      >
+        List
+      </button>
+      <button
+        :class="['mode-btn', { active: displayMode === 'led' }]"
+        @click="emit('update:displayMode', 'led')"
+      >
+        LED
+      </button>
+    </div>
 
     <label class="config-label">Colors</label>
     <div class="color-mode-picker">

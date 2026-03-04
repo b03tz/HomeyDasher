@@ -31,6 +31,9 @@ function getAutoColSpan(widget: DashboardWidget): number {
   if (widget.type === "knob") return 2;
   if (widget.type === "weather") return 2;
   if (widget.type === "container") return widget.config.gridColumns;
+  if (widget.type === "dashboard-switch") return 1;
+  if (widget.type === "enum") return 2;
+  if (widget.type === "text") return 2;
   return 2;
 }
 

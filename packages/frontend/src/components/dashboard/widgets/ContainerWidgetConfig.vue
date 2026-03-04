@@ -20,20 +20,20 @@ function clamp(val: number, min: number, max: number) {
   <div class="container-config">
     <label class="config-label">Grid columns ({{ gridColumns }})</label>
     <div class="stepper">
-      <button class="step-btn" :disabled="gridColumns <= 2" @click="emit('update:gridColumns', clamp(gridColumns - 1, 2, 6))">-</button>
+      <button class="step-btn" :disabled="gridColumns <= 2" @click="emit('update:gridColumns', clamp(gridColumns - 1, 2, 8))">-</button>
       <div class="step-track">
-        <div v-for="i in 5" :key="i" class="step-dot" :class="{ active: i + 1 <= gridColumns }" @click="emit('update:gridColumns', i + 1)" />
+        <div v-for="i in 7" :key="i" class="step-dot" :class="{ active: i + 1 <= gridColumns }" @click="emit('update:gridColumns', i + 1)" />
       </div>
-      <button class="step-btn" :disabled="gridColumns >= 6" @click="emit('update:gridColumns', clamp(gridColumns + 1, 2, 6))">+</button>
+      <button class="step-btn" :disabled="gridColumns >= 8" @click="emit('update:gridColumns', clamp(gridColumns + 1, 2, 8))">+</button>
     </div>
 
     <label class="config-label">Grid rows ({{ gridRows }})</label>
     <div class="stepper">
-      <button class="step-btn" :disabled="gridRows <= 1" @click="emit('update:gridRows', clamp(gridRows - 1, 1, 6))">-</button>
+      <button class="step-btn" :disabled="gridRows <= 1" @click="emit('update:gridRows', clamp(gridRows - 1, 1, 8))">-</button>
       <div class="step-track">
-        <div v-for="i in 6" :key="i" class="step-dot" :class="{ active: i <= gridRows }" @click="emit('update:gridRows', i)" />
+        <div v-for="i in 8" :key="i" class="step-dot" :class="{ active: i <= gridRows }" @click="emit('update:gridRows', i)" />
       </div>
-      <button class="step-btn" :disabled="gridRows >= 6" @click="emit('update:gridRows', clamp(gridRows + 1, 1, 6))">+</button>
+      <button class="step-btn" :disabled="gridRows >= 8" @click="emit('update:gridRows', clamp(gridRows + 1, 1, 8))">+</button>
     </div>
 
     <button class="edit-contents-btn" @click="emit('editContents')">
