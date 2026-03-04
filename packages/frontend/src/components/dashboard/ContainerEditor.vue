@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import type { DashboardWidget, WidgetTheme } from "@homecontrol/shared";
 import { getEffectiveColSpan, getEffectiveRowSpan } from "../../utils/widgetSize";
 import { getOccupiedCells } from "../../utils/gridUtils";
+import { uuid } from "../../utils/uuid";
 import { useGridDrag } from "../../composables/useGridDrag";
 import AddWidgetWizard from "./AddWidgetWizard.vue";
 import SwitchWidget from "./widgets/SwitchWidget.vue";
@@ -267,7 +268,7 @@ function onChildWizardClose() {
 
 function duplicateChildWidget(widget: DashboardWidget) {
   const clone: DashboardWidget = JSON.parse(JSON.stringify(widget));
-  clone.id = crypto.randomUUID();
+  clone.id = uuid();
   pendingWidget.value = clone;
 }
 

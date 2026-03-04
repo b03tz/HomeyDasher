@@ -11,6 +11,7 @@ import type {
 } from "@homecontrol/shared";
 import { useDashboardStore } from "../../stores/dashboard";
 import { nextAvailableRow } from "../../utils/gridUtils";
+import { uuid } from "../../utils/uuid";
 import SwitchWidgetConfig from "./widgets/SwitchWidgetConfig.vue";
 import ChartWidgetConfig from "./widgets/ChartWidgetConfig.vue";
 import NumberWidgetConfig from "./widgets/NumberWidgetConfig.vue";
@@ -537,7 +538,7 @@ function buildWidget(): DashboardWidget | null {
     : dashboardStore.nextAvailableRow();
   const hasTheme = Object.keys(widgetTheme.value).length > 0;
   const base = {
-    id: props.editWidget?.id ?? crypto.randomUUID(),
+    id: props.editWidget?.id ?? uuid(),
     title: title.value.trim(),
     hideTitle: hideTitle.value || undefined,
     position: props.editWidget?.position ?? { col: 1, row: defaultRow },

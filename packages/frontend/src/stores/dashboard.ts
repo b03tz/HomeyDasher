@@ -9,6 +9,7 @@ import type {
   WidgetTheme,
 } from "@homecontrol/shared";
 import { getEffectiveColSpan, getEffectiveRowSpan } from "../utils/widgetSize";
+import { uuid } from "../utils/uuid";
 import {
   getOccupiedCells as _getOccupiedCells,
   canPlace as _canPlace,
@@ -132,7 +133,7 @@ export const useDashboardStore = defineStore("dashboard", () => {
     const widget = widgets.value.find((w) => w.id === id);
     if (!widget) return;
     const clone: DashboardWidget = JSON.parse(JSON.stringify(widget));
-    clone.id = crypto.randomUUID();
+    clone.id = uuid();
     pendingWidget.value = clone;
   }
 
