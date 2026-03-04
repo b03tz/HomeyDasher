@@ -4,7 +4,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
-const CONFIG_PATH = resolve(import.meta.dirname, "../../../../config.json");
+const DATA_DIR = process.env.DATA_DIR ?? resolve(import.meta.dirname, "../../../..");
+const CONFIG_PATH = resolve(DATA_DIR, "config.json");
 
 function defaultConfig(): AppConfig {
   const id = randomUUID();

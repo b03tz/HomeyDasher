@@ -235,6 +235,34 @@ export const useDashboardStore = defineStore("dashboard", () => {
     }
   }
 
+  async function exportBackup() {
+    const res = await fetch("/api/backup");
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().slice(0, 10);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `homecontrol-backup-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importBackup(file: File) {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const res = await fetch("/api/restore", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: text,
+    });
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+    // Refresh state
+    await fetchConfig();
+    await fetchDashboard();
+  }
+
   async function moveWidgetToDashboard(widgetId: string, targetDashboardId: string) {
     const res = await fetch("/api/dashboards/move-widget", {
       method: "POST",
@@ -280,5 +308,7 @@ export const useDashboardStore = defineStore("dashboard", () => {
     updateDashboardEntry,
     deleteDashboard,
     moveWidgetToDashboard,
+    exportBackup,
+    importBackup,
   };
 });

@@ -1,0 +1,16 @@
+services:
+  homecontrol:
+    build: .
+    container_name: homecontrol
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - HOMEY_ADDRESS=${HOMEY_ADDRESS}
+      - HOMEY_TOKEN=${HOMEY_TOKEN}
+      - DATA_DIR=/app/data
+    volumes:
+      - homecontrol-data:/app/data
+
+volumes:
+  homecontrol-data:

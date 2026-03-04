@@ -22,5 +22,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Docker exports
+*.tar
+
 # Claude
 .claude/

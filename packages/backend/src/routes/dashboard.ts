@@ -1,13 +1,13 @@
 import type { FastifyInstance } from "fastify";
-import type { DashboardConfig, DashboardEntry, GridConfig } from "@homecontrol/shared";
-import { readFile, writeFile, mkdir, unlink, access } from "node:fs/promises";
+import type { DashboardConfig, DashboardEntry, GridConfig, AppConfig } from "@homecontrol/shared";
+import { readFile, writeFile, mkdir, unlink, access, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { readConfig, writeConfig } from "./config.js";
 
-const ROOT = resolve(import.meta.dirname, "../../../..");
-const OLD_DASHBOARD_PATH = resolve(ROOT, "dashboard.json");
-const DASHBOARDS_DIR = resolve(ROOT, "dashboards");
+const DATA_DIR = process.env.DATA_DIR ?? resolve(import.meta.dirname, "../../../..");
+const OLD_DASHBOARD_PATH = resolve(DATA_DIR, "dashboard.json");
+const DASHBOARDS_DIR = resolve(DATA_DIR, "dashboards");
 
 function getDashboardPath(id: string): string {
   return resolve(DASHBOARDS_DIR, `${id}.json`);
@@ -200,6 +200,61 @@ export function registerDashboardRoutes(app: FastifyInstance) {
     widget.position = { col: 1, row: 1 };
     targetDashboard.widgets.push(widget);
     await writeDashboardById(targetDashboardId, targetDashboard);
+
+    return { success: true };
+  });
+
+  // Export full backup (config + all dashboards)
+  app.get("/api/backup", async () => {
+    const config = await readConfig();
+    const dashboards: Record<string, DashboardConfig> = {};
+    for (const entry of config.dashboards) {
+      dashboards[entry.id] = await readDashboardById(entry.id);
+    }
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      config,
+      dashboards,
+    };
+  });
+
+  // Restore from backup
+  app.post<{
+    Body: {
+      version: number;
+      config: AppConfig;
+      dashboards: Record<string, DashboardConfig>;
+    };
+  }>("/api/restore", async (request, reply) => {
+    const { version, config, dashboards } = request.body;
+
+    if (!version || !config || !dashboards) {
+      return reply.status(400).send({ error: "Invalid backup format" });
+    }
+    if (!config.dashboards || !config.activeDashboardId) {
+      return reply.status(400).send({ error: "Invalid config in backup" });
+    }
+
+    // Remove existing dashboard files
+    try {
+      const files = await readdir(DASHBOARDS_DIR);
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          await unlink(resolve(DASHBOARDS_DIR, file));
+        }
+      }
+    } catch {
+      // Directory may not exist yet
+    }
+
+    // Write all dashboard files
+    for (const [id, dashboard] of Object.entries(dashboards)) {
+      await writeDashboardById(id, dashboard);
+    }
+
+    // Write config
+    await writeConfig(config);
 
     return { success: true };
   });

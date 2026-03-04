@@ -12,6 +12,31 @@ const emit = defineEmits<{ close: []; openDevInspector: [] }>();
 const dashboardStore = useDashboardStore();
 const toast = useToast();
 
+// Backup & Restore
+const backupFileInput = ref<HTMLInputElement | null>(null);
+
+async function doExport() {
+  try {
+    await dashboardStore.exportBackup();
+    toast.show("Backup exported", "success");
+  } catch {
+    toast.show("Export failed", "error");
+  }
+}
+
+async function doImport(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    await dashboardStore.importBackup(file);
+    toast.show("Backup restored successfully", "success");
+  } catch {
+    toast.show("Import failed — invalid backup file", "error");
+  }
+  input.value = "";
+}
+
 // Dashboard management state
 const newDashboardName = ref("");
 const addingDashboard = ref(false);
@@ -249,6 +274,21 @@ async function removeDashboard(id: string) {
                 :value="dashboardStore.grid.borderRadius ?? 12"
                 class="setting-slider"
                 @input="onRadiusChange"
+              />
+            </div>
+          </section>
+
+          <section class="settings-section">
+            <h3 class="section-title">Backup &amp; Restore</h3>
+            <div class="backup-actions">
+              <button class="backup-btn" @click="doExport">Export Backup</button>
+              <button class="backup-btn" @click="backupFileInput?.click()">Import Backup</button>
+              <input
+                ref="backupFileInput"
+                type="file"
+                accept=".json"
+                style="display: none"
+                @change="doImport"
               />
             </div>
           </section>
@@ -592,6 +632,29 @@ async function removeDashboard(id: string) {
 }
 
 .add-dashboard-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.backup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.backup-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.backup-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
