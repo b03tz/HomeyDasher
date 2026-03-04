@@ -1,0 +1,26 @@
+{
+  "name": "@homecontrol/frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "dev:clean": "vue-tsc --noEmit && vite --host",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "@homecontrol/shared": "workspace:*",
+    "chart.js": "^4.5.1",
+    "pinia": "^2.3.0",
+    "socket.io-client": "^4.8.0",
+    "vue": "^3.5.0",
+    "vue-chartjs": "^5.3.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.0",
+    "typescript": "^5.4.0",
+    "vite": "^6.2.0",
+    "vue-tsc": "^2.2.0"
+  }
+}
