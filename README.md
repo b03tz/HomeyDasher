@@ -2,7 +2,7 @@
   <img src="screenshots/screenshot_1.png" alt="HomeyDasher Dashboard" width="100%" />
 </p>
 
-<h1 align="center">Homey HomeControl</h1>
+<h1 align="center">Homey Dasher</h1>
 
 <p align="center">
   A customizable, real-time web dashboard for <strong>Homey Pro</strong>.<br/>
