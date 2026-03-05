@@ -1,33 +1,107 @@
-# HomeyDasher
+<p align="center">
+  <img src="screenshots/screenshot_1.png" alt="HomeyDasher Dashboard" width="100%" />
+</p>
 
-A customizable, real-time web dashboard for **Homey Pro**. Built with Vue 3 and Fastify, designed to run on anything from a Raspberry Pi touchscreen to a NAS.
+<h1 align="center">Homey HomeControl</h1>
 
-HomeyDasher connects to your Homey Pro via its local API and gives you a drag-and-drop dashboard with live state updates over Socket.io.
+<p align="center">
+  A customizable, real-time web dashboard for <strong>Homey Pro</strong>.<br/>
+  Built with Vue 3 and Fastify, designed to run on anything from a Raspberry Pi touchscreen to a NAS.
+</p>
+
+<p align="center">
+  HomeyDasher connects to your Homey Pro via its local API and gives you a drag-and-drop dashboard with live state updates over Socket.io.
+</p>
+
+---
 
 ## Features
 
 - **Real-time updates** — Device states sync instantly via Socket.io
-- **Drag-and-drop dashboard editor** — Resize and position widgets freely on a grid
-- **Multiple dashboards** — Create separate dashboards and switch between them
-- **18 widget types:**
-  - **Switch** — Toggle devices on/off
-  - **Button** — Trigger Homey flows
-  - **Slider** — Control numeric values with a range input
-  - **Knob** — Rotary control for numeric values
-  - **Gauge** — Display values with warning/danger thresholds
-  - **Number** — Show numeric readings (small/medium/large)
-  - **Status** — Device capability status (list or LED mode)
-  - **Group Status** — Aggregate multiple devices (count, allOff, sum)
-  - **Text** — Custom text or HTML content
-  - **Clock** — Analog or digital clock with date
-  - **Chart** — Historical device data (1 hour to 31 days)
-  - **Live Chart** — Real-time streaming data
-  - **Weather** — Weather data from Homey
-  - **Enum** — Capability option selector (popup or scroll)
-  - **Container** — Nested widget grid (2-8 columns, 1-8 rows)
-  - **Dashboard Switch** — Quick navigation between dashboards
-- **Backup & restore** — Export and import dashboard configurations
-- **Dark themed** — Built for wall-mounted displays
+- **Drag-and-drop dashboard editor** — Resize and position widgets freely on a configurable grid
+- **Multiple dashboards** — Create separate dashboards with their own layouts and switch between them
+- **Per-widget theming** — Customize colors, backgrounds, and images on every widget individually
+- **Background images** — Set custom backgrounds per dashboard or per widget with blur and overlay controls
+- **Backup & restore** — Export and import dashboard configurations as JSON
+- **Dark themed** — Built for always-on wall-mounted displays
+- **Docker ready** — Single container deployment with persistent data
+
+### Widget Library
+
+**19 widget types** across four categories:
+
+| Display | Charts | Control | Utility |
+|---------|--------|---------|---------|
+| Number | Insights Line Chart | Switch | Text |
+| Status (LED) | Live Chart | Slider | Container |
+| Gauge | Bar Chart | Knob | Dashboard Switch |
+| Group Status | Pie / Doughnut | Flow Button | |
+| Weather | Multi-Line Chart | Enum | |
+| Clock | | | |
+
+---
+
+## Screenshots
+
+### Dashboard Examples
+
+Two different dashboard layouts showing the variety of widgets working together — gauges, charts, switches, status LEDs, weather, and more.
+
+<p align="center">
+  <img src="screenshots/screenshot_1.png" alt="Dashboard example 1" width="100%" />
+</p>
+
+<p align="center">
+  <img src="screenshots/screenshot_2.png" alt="Dashboard example 2" width="100%" />
+</p>
+
+### Add Widget Wizard
+
+Widgets are organized into four categories: Display, Charts, Control, and Utility. Pick a type, configure it, and place it on the grid.
+
+<p align="center">
+  <img src="screenshots/screenshot_widgets_1.png" alt="Widget wizard — Display" width="49%" />
+  <img src="screenshots/screenshot_widgets_2.png" alt="Widget wizard — Charts" width="49%" />
+</p>
+
+<p align="center">
+  <img src="screenshots/screenshot_widgets_3.png" alt="Widget wizard — Control" width="49%" />
+  <img src="screenshots/screenshot_widgets_4.png" alt="Widget wizard — Utility" width="49%" />
+</p>
+
+### Widget Configuration
+
+Every widget has a full configuration panel. Set data sources, units, multipliers, decimals, colors, and more — all in a clean modal editor.
+
+<p align="center">
+  <img src="screenshots/screenshot_widget_configuration.png" alt="Widget configuration" width="60%" />
+</p>
+
+### Per-Widget Theming
+
+Each widget can be individually themed with custom colors for background, text, borders, and accent. Copy and paste themes between widgets or apply to all widgets at once. Widgets can also have their own background images.
+
+<p align="center">
+  <img src="screenshots/screenshot_widget_theming.png" alt="Widget theming" width="60%" />
+</p>
+
+### Grid Editor
+
+Drag widgets to reposition them, resize by adjusting column and row spans. The grid overlay shows available placement slots.
+
+<p align="center">
+  <img src="screenshots/screenshot_grid_move.png" alt="Grid drag and drop" width="80%" />
+</p>
+
+### Settings
+
+Manage multiple dashboards, configure grid dimensions, set background images with blur and overlay, and adjust widget appearance globally.
+
+<p align="center">
+  <img src="screenshots/screenshot_settings.png" alt="Settings panel" width="80%" />
+</p>
+
+---
 
 ## Prerequisites
 

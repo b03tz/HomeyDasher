@@ -4,10 +4,12 @@ import type {
   ClientToServerEvents,
 } from "@homecontrol/shared";
 import type { HomeyService } from "../services/HomeyService.js";
+import type { LiveChartBufferService } from "../services/LiveChartBufferService.js";
 
 export function setupSocketHandler(
   io: Server<ClientToServerEvents, ServerToClientEvents>,
-  homey: HomeyService
+  homey: HomeyService,
+  liveChartBuffer: LiveChartBufferService
 ) {
   // Forward HomeyService events to all connected clients
   homey.on("capability:updated", (payload) => {
@@ -56,6 +58,19 @@ export function setupSocketHandler(
       socket.emit("state:sync", {
         devices: homey.getDevices(),
         zones: homey.getZones(),
+      });
+    });
+
+    socket.on("livechart:request-history", (payload) => {
+      const points = liveChartBuffer.getHistory(
+        payload.deviceId,
+        payload.capabilityId,
+        payload.periodMs
+      );
+      socket.emit("livechart:history", {
+        deviceId: payload.deviceId,
+        capabilityId: payload.capabilityId,
+        points,
       });
     });
 

@@ -4,6 +4,7 @@ import type { HomeyDevice } from "@homecontrol/shared";
 
 export const useDeviceStore = defineStore("devices", () => {
   const devices = ref<Record<string, HomeyDevice>>({});
+  const deviceOverrides = ref<Record<string, string>>({});
 
   const devicesByZone = computed(() => {
     const grouped: Record<string, HomeyDevice[]> = {};
@@ -13,9 +14,9 @@ export const useDeviceStore = defineStore("devices", () => {
       }
       grouped[device.zoneId].push(device);
     }
-    // Sort devices within each zone by name
+    // Sort devices within each zone by resolved name
     for (const list of Object.values(grouped)) {
-      list.sort((a, b) => a.name.localeCompare(b.name));
+      list.sort((a, b) => getDeviceName(a.id).localeCompare(getDeviceName(b.id)));
     }
     return grouped;
   });
@@ -62,13 +63,52 @@ export const useDeviceStore = defineStore("devices", () => {
     }
   }
 
+  async function fetchDeviceOverrides() {
+    try {
+      const res = await fetch("/api/device-overrides");
+      if (res.ok) {
+        deviceOverrides.value = await res.json();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function setDeviceOverride(deviceId: string, name: string) {
+    deviceOverrides.value[deviceId] = name;
+    await fetch("/api/device-overrides", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(deviceOverrides.value),
+    });
+  }
+
+  async function clearDeviceOverride(deviceId: string) {
+    delete deviceOverrides.value[deviceId];
+    await fetch("/api/device-overrides", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(deviceOverrides.value),
+    });
+  }
+
+  function getDeviceName(deviceId: string): string {
+    if (deviceOverrides.value[deviceId]) return deviceOverrides.value[deviceId];
+    return devices.value[deviceId]?.name ?? "Unknown";
+  }
+
   return {
     devices,
+    deviceOverrides,
     devicesByZone,
     setDevices,
     updateDevice,
     removeDevice,
     updateCapability,
     setCapabilityValue,
+    fetchDeviceOverrides,
+    setDeviceOverride,
+    clearDeviceOverride,
+    getDeviceName,
   };
 });

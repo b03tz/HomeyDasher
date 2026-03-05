@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
+    "@fastify/multipart": "^9.4.0",
     "@fastify/static": "^9.0.0",
     "@homecontrol/shared": "workspace:*",
     "dotenv": "^16.4.0",

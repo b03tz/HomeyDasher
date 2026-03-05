@@ -18,6 +18,9 @@ import LiveChartWidget from "./LiveChartWidget.vue";
 import EnumWidget from "./EnumWidget.vue";
 import TextWidget from "./TextWidget.vue";
 import DashboardSwitchWidget from "./DashboardSwitchWidget.vue";
+import BarChartWidget from "./BarChartWidget.vue";
+import PieChartWidget from "./PieChartWidget.vue";
+import MultiLineChartWidget from "./MultiLineChartWidget.vue";
 
 const props = defineProps<{
   widget: ContainerWidgetType;
@@ -44,11 +47,21 @@ function themeStyle(theme?: WidgetTheme): Record<string, string> {
 function childGridStyle(child: ContainerWidgetType["config"]["widgets"][number]) {
   const colSpan = getEffectiveColSpan(child);
   const rowSpan = getEffectiveRowSpan(child);
-  return {
+  const style: Record<string, string> = {
     gridColumn: `${child.position.col} / span ${colSpan}`,
     gridRow: `${child.position.row} / span ${rowSpan}`,
     ...themeStyle(child.theme),
   };
+  if (child.backgroundImage?.url) {
+    style["--widget-bg-image"] = `url(${child.backgroundImage.url})`;
+    style["--widget-bg-overlay"] = `rgba(0, 0, 0, ${(child.backgroundImage.overlayOpacity ?? 40) / 100})`;
+    style["--widget-bg-blur"] = `${child.backgroundImage.blur ?? 0}px`;
+  }
+  return style;
+}
+
+function hasChildBg(child: ContainerWidgetType["config"]["widgets"][number]): boolean {
+  return !!child.backgroundImage?.url;
 }
 </script>
 
@@ -61,6 +74,7 @@ function childGridStyle(child: ContainerWidgetType["config"]["widgets"][number])
         :key="child.id"
         :style="childGridStyle(child)"
         class="container-child"
+        :class="{ 'has-bg-image': hasChildBg(child) }"
       >
         <SwitchWidget v-if="child.type === 'switch'" :widget="child" />
         <ChartWidget v-else-if="child.type === 'chart'" :widget="child" />
@@ -77,6 +91,9 @@ function childGridStyle(child: ContainerWidgetType["config"]["widgets"][number])
         <EnumWidget v-else-if="child.type === 'enum'" :widget="child" />
         <TextWidget v-else-if="child.type === 'text'" :widget="child" />
         <DashboardSwitchWidget v-else-if="child.type === 'dashboard-switch'" :widget="child" />
+        <BarChartWidget v-else-if="child.type === 'bar-chart'" :widget="child" />
+        <PieChartWidget v-else-if="child.type === 'pie-chart'" :widget="child" />
+        <MultiLineChartWidget v-else-if="child.type === 'multi-line-chart'" :widget="child" />
       </div>
     </div>
   </div>
@@ -92,6 +109,15 @@ function childGridStyle(child: ContainerWidgetType["config"]["widgets"][number])
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  backdrop-filter: blur(var(--card-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--card-blur, 18px));
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.container-widget:hover {
+  border-color: rgba(79, 195, 247, 0.5);
+  box-shadow: var(--card-shadow), 0 0 24px rgba(79, 195, 247, 0.12);
 }
 
 .container-grid {
@@ -105,5 +131,37 @@ function childGridStyle(child: ContainerWidgetType["config"]["widgets"][number])
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.container-child.has-bg-image {
+  border-radius: var(--radius);
+}
+
+.container-child.has-bg-image::before,
+.container-child.has-bg-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--radius);
+}
+
+.container-child.has-bg-image::before {
+  background-image: var(--widget-bg-image);
+  background-size: cover;
+  background-position: center;
+  filter: blur(var(--widget-bg-blur, 0px));
+  z-index: 0;
+}
+
+.container-child.has-bg-image::after {
+  background: var(--widget-bg-overlay);
+  z-index: 0;
+}
+
+.container-child.has-bg-image > * {
+  position: relative;
+  z-index: 1;
 }
 </style>

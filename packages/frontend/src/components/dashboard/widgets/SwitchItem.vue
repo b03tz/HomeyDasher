@@ -15,7 +15,7 @@ const sliderCapId = computed(() => props.deviceRef.sliderCapabilityId ?? "dim");
 const sliderCapability = computed(() => device.value?.capabilities[sliderCapId.value]);
 const hasSlider = computed(() => !!sliderCapability.value?.setable);
 const isOn = computed(() => !!capability.value?.value);
-const name = computed(() => device.value?.name ?? "Unavailable");
+const name = computed(() => device.value ? deviceStore.getDeviceName(props.deviceRef.deviceId) : "Unavailable");
 
 const sliderMin = computed(() => sliderCapability.value?.min ?? 0);
 const sliderMax = computed(() => sliderCapability.value?.max ?? 1);
@@ -173,21 +173,30 @@ onBeforeUnmount(() => {
   background: var(--bg-secondary);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s;
   user-select: none;
   touch-action: none;
   overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .power-btn:hover:not(.sliding) {
   border-color: var(--text-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .power-btn.on {
-  border-color: var(--accent);
+  border-color: rgba(79, 195, 247, 0.6);
   color: var(--accent);
-  background: rgba(79, 195, 247, 0.08);
-  box-shadow: 0 0 12px rgba(79, 195, 247, 0.15);
+  background: rgba(79, 195, 247, 0.12);
+  box-shadow:
+    0 0 20px rgba(79, 195, 247, 0.3),
+    0 0 40px rgba(79, 195, 247, 0.1),
+    inset 0 0 16px rgba(79, 195, 247, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .power-btn.sliding {

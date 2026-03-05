@@ -20,6 +20,9 @@ import ContainerWidget from "./widgets/ContainerWidget.vue";
 import TextWidget from "./widgets/TextWidget.vue";
 import EnumWidget from "./widgets/EnumWidget.vue";
 import DashboardSwitchWidget from "./widgets/DashboardSwitchWidget.vue";
+import BarChartWidget from "./widgets/BarChartWidget.vue";
+import PieChartWidget from "./widgets/PieChartWidget.vue";
+import MultiLineChartWidget from "./widgets/MultiLineChartWidget.vue";
 
 defineProps<{
   widgets: DashboardWidget[];
@@ -33,8 +36,20 @@ const emit = defineEmits<{
 const dashboardStore = useDashboardStore();
 const gridRef = ref<HTMLElement | null>(null);
 
-const gridColumns = computed(() => dashboardStore.grid.columns);
-const gridRows = computed(() => dashboardStore.grid.rows);
+const gridColumns = computed(() => {
+  const configured = dashboardStore.grid.columns;
+  const maxUsed = dashboardStore.widgets.reduce((max, w) => {
+    return Math.max(max, w.position.col + getEffectiveColSpan(w) - 1);
+  }, 0);
+  return Math.max(configured, maxUsed);
+});
+const gridRows = computed(() => {
+  const configured = dashboardStore.grid.rows;
+  const maxUsed = dashboardStore.widgets.reduce((max, w) => {
+    return Math.max(max, w.position.row + getEffectiveRowSpan(w) - 1);
+  }, 0);
+  return Math.max(configured, maxUsed);
+});
 
 const gridDynStyle = computed(() => ({
   gridTemplateColumns: `repeat(${gridColumns.value}, 1fr)`,
@@ -74,11 +89,21 @@ function themeStyle(theme?: WidgetTheme): Record<string, string> {
 function gridStyle(widget: DashboardWidget) {
   const colSpan = getEffectiveColSpan(widget);
   const rowSpan = getEffectiveRowSpan(widget);
-  return {
+  const style: Record<string, string> = {
     gridColumn: `${widget.position.col} / span ${colSpan}`,
     gridRow: `${widget.position.row} / span ${rowSpan}`,
     ...themeStyle(widget.theme),
   };
+  if (widget.backgroundImage?.url) {
+    style["--widget-bg-image"] = `url(${widget.backgroundImage.url})`;
+    style["--widget-bg-overlay"] = `rgba(0, 0, 0, ${(widget.backgroundImage.overlayOpacity ?? 40) / 100})`;
+    style["--widget-bg-blur"] = `${widget.backgroundImage.blur ?? 0}px`;
+  }
+  return style;
+}
+
+function hasWidgetBg(widget: DashboardWidget): boolean {
+  return !!widget.backgroundImage?.url;
 }
 
 function ghostStyle() {
@@ -260,6 +285,7 @@ onUnmounted(() => {
         'is-resizing': activeWidgetId === widget.id && isResizing,
         'edit-active': dashboardStore.editMode,
         'placement-dimmed': placing,
+        'has-bg-image': hasWidgetBg(widget),
       }"
     >
       <div class="widget-content" :class="{ 'no-interact': dashboardStore.editMode || placing }">
@@ -279,6 +305,9 @@ onUnmounted(() => {
         <ContainerWidget v-else-if="widget.type === 'container'" :widget="widget" />
         <TextWidget v-else-if="widget.type === 'text'" :widget="widget" />
         <DashboardSwitchWidget v-else-if="widget.type === 'dashboard-switch'" :widget="widget" />
+        <BarChartWidget v-else-if="widget.type === 'bar-chart'" :widget="widget" />
+        <PieChartWidget v-else-if="widget.type === 'pie-chart'" :widget="widget" />
+        <MultiLineChartWidget v-else-if="widget.type === 'multi-line-chart'" :widget="widget" />
       </div>
 
       <!-- Edit mode: left half = drag, right half = settings -->
@@ -352,6 +381,38 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 0;
   position: relative;
+}
+
+.grid-cell.has-bg-image {
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+.grid-cell.has-bg-image::before,
+.grid-cell.has-bg-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--radius);
+}
+
+.grid-cell.has-bg-image::before {
+  background-image: var(--widget-bg-image);
+  background-size: cover;
+  background-position: center;
+  filter: blur(var(--widget-bg-blur, 0px));
+  z-index: 0;
+}
+
+.grid-cell.has-bg-image::after {
+  background: var(--widget-bg-overlay);
+  z-index: 0;
+}
+
+.grid-cell.has-bg-image > .widget-content {
+  position: relative;
+  z-index: 1;
 }
 
 .grid-cell.edit-active {

@@ -23,6 +23,7 @@ export function useSocket() {
       const zoneStore = useZoneStore();
       deviceStore.setDevices(devices);
       zoneStore.setZones(zones);
+      deviceStore.fetchDeviceOverrides();
     });
 
     socket.on("capability:updated", (payload) => {

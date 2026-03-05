@@ -150,16 +150,16 @@ const remaining = computed(() => MAX_DEVICES - props.devices.length);
     <label class="config-label">Display Mode</label>
     <div class="color-mode-picker">
       <button
-        :class="['mode-btn', { active: displayMode === 'list' }]"
-        @click="emit('update:displayMode', 'list')"
+        :class="['mode-btn', { active: displayMode !== 'columns' }]"
+        @click="emit('update:displayMode', 'led-list')"
       >
-        List
+        LED List
       </button>
       <button
-        :class="['mode-btn', { active: displayMode === 'led' }]"
-        @click="emit('update:displayMode', 'led')"
+        :class="['mode-btn', { active: displayMode === 'columns' }]"
+        @click="emit('update:displayMode', 'columns')"
       >
-        LED
+        Columns
       </button>
     </div>
 

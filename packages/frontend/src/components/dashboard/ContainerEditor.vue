@@ -21,6 +21,9 @@ import LiveChartWidget from "./widgets/LiveChartWidget.vue";
 import TextWidget from "./widgets/TextWidget.vue";
 import EnumWidget from "./widgets/EnumWidget.vue";
 import DashboardSwitchWidget from "./widgets/DashboardSwitchWidget.vue";
+import BarChartWidget from "./widgets/BarChartWidget.vue";
+import PieChartWidget from "./widgets/PieChartWidget.vue";
+import MultiLineChartWidget from "./widgets/MultiLineChartWidget.vue";
 
 const props = defineProps<{
   gridColumns: number;
@@ -394,6 +397,9 @@ function done() {
               <EnumWidget v-else-if="widget.type === 'enum'" :widget="widget" />
               <TextWidget v-else-if="widget.type === 'text'" :widget="widget" />
               <DashboardSwitchWidget v-else-if="widget.type === 'dashboard-switch'" :widget="widget" />
+              <BarChartWidget v-else-if="widget.type === 'bar-chart'" :widget="widget" />
+              <PieChartWidget v-else-if="widget.type === 'pie-chart'" :widget="widget" />
+              <MultiLineChartWidget v-else-if="widget.type === 'multi-line-chart'" :widget="widget" />
             </div>
 
             <!-- Drag / settings zones -->

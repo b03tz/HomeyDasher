@@ -17,8 +17,18 @@ export interface ServerToClientEvents {
     value: unknown;
   }) => void;
   "homey:status": (status: HomeyConnectionStatus) => void;
+  "livechart:history": (payload: {
+    deviceId: string;
+    capabilityId: string;
+    points: { t: number; v: number }[];
+  }) => void;
 }
 
 export interface ClientToServerEvents {
   "state:request": () => void;
+  "livechart:request-history": (payload: {
+    deviceId: string;
+    capabilityId: string;
+    periodMs: number;
+  }) => void;
 }

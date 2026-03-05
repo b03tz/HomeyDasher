@@ -1,8 +1,21 @@
+export interface BackgroundImage {
+  url: string;
+  overlayOpacity?: number; // 0–100, default 40
+  blur?: number; // 0–20 px, default 0
+}
+
+export type LayoutMode = "grid" | "freeform";
+
 export interface WidgetPosition {
   col: number; // 1-based, 1–12
   row: number; // 1-based
   colSpan?: number; // explicit column span override (1–12)
   rowSpan?: number; // explicit row span override
+  // Freeform positioning (pixels)
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface WidgetDeviceRef {
@@ -28,6 +41,7 @@ export interface BaseWidget {
   hideTitle?: boolean;
   position: WidgetPosition;
   theme?: WidgetTheme;
+  backgroundImage?: BackgroundImage;
 }
 
 export interface SwitchWidget extends BaseWidget {
@@ -71,7 +85,7 @@ export interface NumberWidget extends BaseWidget {
   };
 }
 
-export type StatusDisplayMode = "list" | "led";
+export type StatusDisplayMode = "columns" | "led-list";
 
 export interface StatusWidget extends BaseWidget {
   type: "status";
@@ -224,11 +238,17 @@ export type DashboardWidget =
   | EnumWidget
   | ContainerWidget
   | DashboardSwitchWidget
-  | TextWidget;
+  | TextWidget
+  | BarChartWidget
+  | PieChartWidget
+  | MultiLineChartWidget;
 
 export interface DashboardConfig {
   widgets: DashboardWidget[];
   grid?: GridConfig;
+  layoutMode?: LayoutMode;
+  backgroundImage?: BackgroundImage;
+  widgetBlur?: number; // 0–20 px, card backdrop blur, default 18
 }
 
 export interface GridConfig {
@@ -236,6 +256,7 @@ export interface GridConfig {
   rows: number;         // 3–12
   gap?: number;         // grid gap in px, 0–25 (default 12)
   borderRadius?: number; // widget border-radius in px, 0–12 (default 12)
+  showBorders?: boolean; // show card borders (default true)
 }
 
 export interface TextWidget extends BaseWidget {
@@ -253,6 +274,74 @@ export interface DashboardSwitchWidget extends BaseWidget {
   };
 }
 
+export interface BarChartWidget extends BaseWidget {
+  type: "bar-chart";
+  config: {
+    logId: string;
+    resolution: "lastHour" | "last6Hours" | "last24Hours" | "last7Days" | "last14Days" | "last31Days";
+    unit?: string;
+    multiplier?: number;
+    color?: string;
+    hideXAxis?: boolean;
+    decimals?: number;
+    secondary?: {
+      logId: string;
+      unit?: string;
+      multiplier?: number;
+      color?: string;
+    };
+  };
+}
+
+export type PieChartStyle = "pie" | "doughnut";
+export type PieChartAggregation = "sum" | "average";
+
+export interface PieChartDeviceSlice {
+  source: "device";
+  deviceId: string;
+  capabilityId: string;
+  label?: string;
+  color?: string;
+}
+
+export interface PieChartInsightsSlice {
+  source: "insights";
+  logId: string;
+  label?: string;
+  color?: string;
+}
+
+export type PieChartSlice = PieChartDeviceSlice | PieChartInsightsSlice;
+
+export interface PieChartWidget extends BaseWidget {
+  type: "pie-chart";
+  config: {
+    slices: PieChartSlice[];
+    style: PieChartStyle;
+    unit?: string;
+    multiplier?: number;
+    decimals?: number;
+    resolution?: "lastHour" | "last6Hours" | "last24Hours" | "last7Days" | "last14Days" | "last31Days";
+    aggregation?: PieChartAggregation;
+  };
+}
+
+export interface MultiLineChartSeries {
+  logId: string;
+  color?: string;
+  unit?: string;
+  multiplier?: number;
+}
+export interface MultiLineChartWidget extends BaseWidget {
+  type: "multi-line-chart";
+  config: {
+    series: MultiLineChartSeries[];
+    resolution: "lastHour" | "last6Hours" | "last24Hours" | "last7Days" | "last14Days" | "last31Days";
+    hideXAxis?: boolean;
+    decimals?: number;
+  };
+}
+
 export interface DashboardEntry {
   id: string;
   name: string;
@@ -263,4 +352,5 @@ export interface AppConfig {
   grid: GridConfig;
   dashboards: DashboardEntry[];
   activeDashboardId: string;
+  deviceOverrides?: Record<string, string>;
 }

@@ -138,6 +138,15 @@ const isAnalog = computed(() => props.widget.config.style === "analog");
   height: 100%;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(var(--card-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--card-blur, 18px));
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.clock-widget:hover {
+  border-color: rgba(79, 195, 247, 0.5);
+  box-shadow: var(--card-shadow), 0 0 24px rgba(79, 195, 247, 0.12);
 }
 
 .clock-body {

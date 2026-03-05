@@ -16,8 +16,8 @@ const selectedDevice = ref<HomeyDevice | null>(null);
 const filteredDevices = computed(() => {
   const q = search.value.toLowerCase().trim();
   const all = Object.values(deviceStore.devices);
-  const filtered = q ? all.filter((d) => d.name.toLowerCase().includes(q)) : all;
-  filtered.sort((a, b) => a.name.localeCompare(b.name));
+  const filtered = q ? all.filter((d) => deviceStore.getDeviceName(d.id).toLowerCase().includes(q) || d.name.toLowerCase().includes(q)) : all;
+  filtered.sort((a, b) => deviceStore.getDeviceName(a.id).localeCompare(deviceStore.getDeviceName(b.id)));
   return filtered;
 });
 
@@ -66,7 +66,7 @@ function formatValue(value: unknown): string {
               class="device-row"
               @click="selectDevice(device)"
             >
-              <span class="device-name">{{ device.name }}</span>
+              <span class="device-name">{{ deviceStore.getDeviceName(device.id) }}</span>
               <span class="device-meta">{{ zoneName(device) }} &middot; {{ device.class }}</span>
             </button>
             <p v-if="filteredDevices.length === 0" class="no-results">No devices found</p>

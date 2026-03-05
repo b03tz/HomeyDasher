@@ -4,6 +4,7 @@ import { readFile, writeFile, mkdir, unlink, access, readdir } from "node:fs/pro
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { readConfig, writeConfig } from "./config.js";
+import type { LiveChartBufferService } from "../services/LiveChartBufferService.js";
 
 const DATA_DIR = process.env.DATA_DIR ?? resolve(import.meta.dirname, "../../../..");
 const OLD_DASHBOARD_PATH = resolve(DATA_DIR, "dashboard.json");
@@ -95,7 +96,7 @@ async function writeDashboard(config: DashboardConfig): Promise<void> {
   await writeFile(path, JSON.stringify(config, null, 2), "utf-8");
 }
 
-export function registerDashboardRoutes(app: FastifyInstance) {
+export function registerDashboardRoutes(app: FastifyInstance, liveChartBuffer: LiveChartBufferService) {
   // Run migration before registering routes
   app.addHook("onReady", async () => {
     await migrate();
@@ -114,6 +115,7 @@ export function registerDashboardRoutes(app: FastifyInstance) {
   app.put<{ Body: DashboardConfig }>("/api/dashboard", async (request) => {
     const config = request.body;
     await writeDashboard(config);
+    liveChartBuffer.rescan().catch(() => {});
     return { success: true };
   });
 
@@ -131,6 +133,7 @@ export function registerDashboardRoutes(app: FastifyInstance) {
     config.dashboards.push(entry);
     await writeConfig(config);
     await writeDashboardById(id, { widgets: [] });
+    liveChartBuffer.rescan().catch(() => {});
     return entry;
   });
 
@@ -162,6 +165,7 @@ export function registerDashboardRoutes(app: FastifyInstance) {
     await writeConfig(config);
     // Remove dashboard file
     try { await unlink(getDashboardPath(id)); } catch { /* ignore */ }
+    liveChartBuffer.rescan().catch(() => {});
     return { success: true, activeDashboardId: config.activeDashboardId };
   });
 
@@ -201,6 +205,7 @@ export function registerDashboardRoutes(app: FastifyInstance) {
     targetDashboard.widgets.push(widget);
     await writeDashboardById(targetDashboardId, targetDashboard);
 
+    liveChartBuffer.rescan().catch(() => {});
     return { success: true };
   });
 
@@ -216,6 +221,7 @@ export function registerDashboardRoutes(app: FastifyInstance) {
       exportedAt: new Date().toISOString(),
       config,
       dashboards,
+      deviceOverrides: config.deviceOverrides ?? {},
     };
   });
 
@@ -225,9 +231,10 @@ export function registerDashboardRoutes(app: FastifyInstance) {
       version: number;
       config: AppConfig;
       dashboards: Record<string, DashboardConfig>;
+      deviceOverrides?: Record<string, string>;
     };
   }>("/api/restore", async (request, reply) => {
-    const { version, config, dashboards } = request.body;
+    const { version, config, dashboards, deviceOverrides } = request.body;
 
     if (!version || !config || !dashboards) {
       return reply.status(400).send({ error: "Invalid backup format" });
@@ -253,9 +260,13 @@ export function registerDashboardRoutes(app: FastifyInstance) {
       await writeDashboardById(id, dashboard);
     }
 
-    // Write config
+    // Write config (include device overrides if present)
+    if (deviceOverrides) {
+      config.deviceOverrides = deviceOverrides;
+    }
     await writeConfig(config);
 
+    liveChartBuffer.rescan().catch(() => {});
     return { success: true };
   });
 }

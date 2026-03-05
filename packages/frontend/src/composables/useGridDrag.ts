@@ -45,6 +45,7 @@ export function useGridDrag(options: GridDragOptions) {
   // Measured at drag start
   let cellWidth = 0;
   let cellHeight = 0;
+  let gridGap = 0;
   let startX = 0;
   let startY = 0;
   let originCol = 0;
@@ -56,11 +57,11 @@ export function useGridDrag(options: GridDragOptions) {
   function measureGrid(gridEl: HTMLElement) {
     const gridRect = gridEl.getBoundingClientRect();
     const style = getComputedStyle(gridEl);
-    const gap = parseFloat(style.gap) || 12;
+    gridGap = parseFloat(style.gap) || 0;
     const cols = gridColumns.value;
     const rows = gridRows.value;
-    cellWidth = (gridRect.width - gap * (cols - 1)) / cols;
-    cellHeight = (gridRect.height - gap * (rows - 1)) / rows;
+    cellWidth = (gridRect.width - gridGap * (cols - 1)) / cols;
+    cellHeight = (gridRect.height - gridGap * (rows - 1)) / rows;
   }
 
   function initCommon(event: PointerEvent, widget: DashboardWidget, gridEl: HTMLElement) {
@@ -101,21 +102,22 @@ export function useGridDrag(options: GridDragOptions) {
 
   function onPointerMove(event: PointerEvent) {
     if (!currentWidget) return;
-    const gap = 12;
     const cols = gridColumns.value;
     const rows = gridRows.value;
+    const step = cellWidth + gridGap;
+    const stepY = cellHeight + gridGap;
 
     if (isResizing.value) {
       if (resizeAxis.value === "col") {
         const dx = event.clientX - startX;
-        const colDelta = Math.round(dx / (cellWidth + gap));
+        const colDelta = Math.round(dx / step);
         targetColSpan.value = Math.max(
           getMinColSpan(currentWidget),
           Math.min(getMaxColSpan(currentWidget, cols), originColSpan + colDelta)
         );
       } else {
         const dy = event.clientY - startY;
-        const rowDelta = Math.round(dy / (cellHeight + gap));
+        const rowDelta = Math.round(dy / stepY);
         targetRowSpan.value = Math.max(
           getMinRowSpan(currentWidget),
           Math.min(getMaxRowSpan(currentWidget, rows), originRowSpan + rowDelta)
@@ -124,8 +126,8 @@ export function useGridDrag(options: GridDragOptions) {
     } else {
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
-      const colDelta = Math.round(dx / (cellWidth + gap));
-      const rowDelta = Math.round(dy / (cellHeight + gap));
+      const colDelta = Math.round(dx / step);
+      const rowDelta = Math.round(dy / stepY);
       targetCol.value = Math.max(1, Math.min(cols + 1 - originColSpan, originCol + colDelta));
       targetRow.value = Math.max(1, Math.min(rows + 1 - originRowSpan, originRow + rowDelta));
     }

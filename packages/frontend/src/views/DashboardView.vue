@@ -4,6 +4,7 @@ import { useSocket } from "../composables/useSocket";
 import { useDashboardStore } from "../stores/dashboard";
 import type { DashboardWidget } from "@homecontrol/shared";
 import DashboardGrid from "../components/dashboard/DashboardGrid.vue";
+import FreeformCanvas from "../components/dashboard/FreeformCanvas.vue";
 import AddWidgetWizard from "../components/dashboard/AddWidgetWizard.vue";
 import DevInspector from "../components/dashboard/DevInspector.vue";
 import SettingsModal from "../components/dashboard/SettingsModal.vue";
@@ -65,9 +66,9 @@ const editingWidget = ref<DashboardWidget | null>(null);
 const devInspectorOpen = ref(false);
 const settingsOpen = ref(false);
 
-onMounted(() => {
-  dashboardStore.fetchConfig();
-  dashboardStore.fetchDashboard();
+onMounted(async () => {
+  await dashboardStore.fetchConfig();
+  await dashboardStore.fetchDashboard();
 });
 
 function openAddWizard() {
@@ -98,10 +99,27 @@ const headerTitle = computed(() => {
 function onWidgetPlaced() {
   dashboardStore.editMode = true;
 }
+
+const dashboardBgVars = computed(() => {
+  const bg = dashboardStore.backgroundImage;
+  if (!bg?.url) return {};
+  return {
+    "--dash-bg-image": `url(${bg.url})`,
+    "--dash-bg-overlay": `rgba(0, 0, 0, ${(bg.overlayOpacity ?? 40) / 100})`,
+    "--dash-bg-blur": `${bg.blur ?? 0}px`,
+  } as Record<string, string>;
+});
 </script>
 
 <template>
-  <div class="dashboard">
+  <div
+    class="dashboard"
+    :class="{
+      'has-background': !!dashboardStore.backgroundImage?.url,
+      'freeform-mode': dashboardStore.layoutMode === 'freeform',
+    }"
+    :style="dashboardBgVars"
+  >
     <!-- Pill handle to restore hidden header -->
     <button
       v-if="headerHidden"
@@ -162,7 +180,14 @@ function onWidgetPlaced() {
       <p v-if="!dashboardStore.loaded" class="empty">Loading dashboard...</p>
 
       <template v-else>
+        <FreeformCanvas
+          v-if="dashboardStore.layoutMode === 'freeform'"
+          :widgets="dashboardStore.widgets"
+          @edit-widget="openEditWizard"
+          @placed="onWidgetPlaced"
+        />
         <DashboardGrid
+          v-else
           :widgets="dashboardStore.widgets"
           @edit-widget="openEditWizard"
           @placed="onWidgetPlaced"
@@ -217,12 +242,43 @@ function onWidgetPlaced() {
 
 <style scoped>
 .dashboard {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 0;
   height: 100dvh;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.dashboard.freeform-mode {
+  max-width: none;
+}
+
+.dashboard.has-background::before,
+.dashboard.has-background::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dashboard.has-background::before {
+  background-image: var(--dash-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(var(--dash-bg-blur, 0px));
+}
+
+.dashboard.has-background::after {
+  background: var(--dash-bg-overlay);
+}
+
+.dashboard.has-background > * {
+  position: relative;
+  z-index: 1;
 }
 
 .app-header {
@@ -230,7 +286,14 @@ function onWidgetPlaced() {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+  background: rgba(8, 12, 20, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 2px 20px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(79, 195, 247, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .app-header h1 {
@@ -253,14 +316,16 @@ function onWidgetPlaced() {
   padding: 4px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: transparent;
+  background: rgba(15, 25, 45, 0.4);
   color: var(--text-secondary);
   cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .header-icon-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+  box-shadow: 0 0 12px rgba(79, 195, 247, 0.15);
 }
 
 .header-icon-btn.active {
@@ -337,6 +402,11 @@ function onWidgetPlaced() {
 }
 
 /* Pill handle */
+.dashboard.has-background > .header-pill {
+  position: fixed;
+  z-index: 1000;
+}
+
 .header-pill {
   position: fixed;
   top: 6px;
@@ -388,7 +458,11 @@ function onWidgetPlaced() {
 }
 
 .practice-modal {
-  background: var(--card-bg, #1e1e1e);
+  background: rgba(12, 18, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(79, 195, 247, 0.12);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
   border-radius: 16px;
   padding: 32px;
   max-width: 360px;

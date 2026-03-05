@@ -39,4 +39,16 @@ export function registerConfigRoutes(app: FastifyInstance) {
     await writeConfig(config);
     return { success: true };
   });
+
+  app.get("/api/device-overrides", async () => {
+    const config = await readConfig();
+    return config.deviceOverrides ?? {};
+  });
+
+  app.put<{ Body: Record<string, string> }>("/api/device-overrides", async (request) => {
+    const config = await readConfig();
+    config.deviceOverrides = request.body;
+    await writeConfig(config);
+    return { success: true };
+  });
 }

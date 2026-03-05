@@ -44,14 +44,20 @@ async function handleClick() {
   gap: 10px;
   padding: 12px;
   background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   height: 100%;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.3s, border-color 0.3s;
+  backdrop-filter: blur(var(--card-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--card-blur, 18px));
+  box-shadow: var(--card-shadow);
 }
 
 .dashboard-switch-widget:hover {
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-card));
+  border-color: rgba(79, 195, 247, 0.5);
+  box-shadow: var(--card-shadow), 0 0 24px rgba(79, 195, 247, 0.15);
 }
 
 .switch-icon {

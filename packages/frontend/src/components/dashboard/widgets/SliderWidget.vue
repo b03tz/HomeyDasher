@@ -93,6 +93,15 @@ const displayValue = computed(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(var(--card-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--card-blur, 18px));
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.slider-widget:hover {
+  border-color: rgba(79, 195, 247, 0.5);
+  box-shadow: var(--card-shadow), 0 0 24px rgba(79, 195, 247, 0.12);
 }
 
 .slider-body {
@@ -144,8 +153,8 @@ const displayValue = computed(() => {
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  border: 2px solid var(--bg-card);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(8, 12, 20, 0.8);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 8px rgba(79, 195, 247, 0.3);
 }
 
 .slider-range::-moz-range-thumb {
@@ -154,8 +163,8 @@ const displayValue = computed(() => {
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  border: 2px solid var(--bg-card);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(8, 12, 20, 0.8);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 8px rgba(79, 195, 247, 0.3);
 }
 
 .slider-range::-moz-range-track {

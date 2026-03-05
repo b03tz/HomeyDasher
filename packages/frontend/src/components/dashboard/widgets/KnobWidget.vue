@@ -354,6 +354,15 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(var(--card-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--card-blur, 18px));
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.knob-widget:hover {
+  border-color: rgba(79, 195, 247, 0.5);
+  box-shadow: var(--card-shadow), 0 0 24px rgba(79, 195, 247, 0.12);
 }
 
 .knob-body {
@@ -380,6 +389,7 @@ onBeforeUnmount(() => {
 
 .knob-body-fill {
   fill: var(--bg-secondary);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
 }
 
 .arc-glow {

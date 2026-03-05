@@ -71,11 +71,18 @@ async function triggerFlow() {
   user-select: none;
   touch-action: none;
   overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 15%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .flow-btn:hover {
-  background: color-mix(in srgb, var(--btn-color) 15%, transparent);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 25%, transparent);
+  background: color-mix(in srgb, var(--btn-color) 18%, transparent);
+  box-shadow:
+    0 0 20px color-mix(in srgb, var(--btn-color) 35%, transparent),
+    0 0 40px color-mix(in srgb, var(--btn-color) 15%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
 }
 
 .flow-btn:active,

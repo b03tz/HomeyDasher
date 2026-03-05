@@ -7,6 +7,8 @@ import type {
   AppConfig,
   GridConfig,
   WidgetTheme,
+  LayoutMode,
+  BackgroundImage,
 } from "@homecontrol/shared";
 import { getEffectiveColSpan, getEffectiveRowSpan } from "../utils/widgetSize";
 import { uuid } from "../utils/uuid";
@@ -24,16 +26,22 @@ export const useDashboardStore = defineStore("dashboard", () => {
   const pendingWidget = ref<DashboardWidget | null>(null);
   const dashboards = ref<DashboardEntry[]>([]);
   const activeDashboardId = ref("");
+  const layoutMode = ref<LayoutMode>("grid");
+  const backgroundImage = ref<BackgroundImage | undefined>(undefined);
+  const widgetBlur = ref<number | undefined>(undefined);
 
   function toggleEditMode() {
     editMode.value = !editMode.value;
   }
 
-  /** Push gap + borderRadius into :root CSS variables so all grids/widgets pick them up */
+  /** Push gap + borderRadius + showBorders into :root CSS variables so all grids/widgets pick them up */
   function applyCssVars() {
     const root = document.documentElement;
     root.style.setProperty("--grid-gap", `${grid.value.gap ?? 12}px`);
     root.style.setProperty("--radius", `${grid.value.borderRadius ?? 12}px`);
+    const showBorders = grid.value.showBorders !== false;
+    root.style.setProperty("--border", showBorders ? "rgba(79, 195, 247, 0.35)" : "transparent");
+    root.style.setProperty("--card-blur", `${widgetBlur.value ?? 18}px`);
   }
 
   async function fetchConfig() {
@@ -50,8 +58,8 @@ export const useDashboardStore = defineStore("dashboard", () => {
     await saveDashboard();
   }
 
-  async function updateAppearance(gap: number, borderRadius: number) {
-    grid.value = { ...grid.value, gap, borderRadius };
+  async function updateAppearance(gap: number, borderRadius: number, showBorders?: boolean) {
+    grid.value = { ...grid.value, gap, borderRadius, ...(showBorders !== undefined && { showBorders }) };
     applyCssVars();
     await saveDashboard();
   }
@@ -62,16 +70,26 @@ export const useDashboardStore = defineStore("dashboard", () => {
     widgets.value = data.widgets;
     if (data.grid) {
       grid.value = data.grid;
-      applyCssVars();
     }
+    layoutMode.value = data.layoutMode ?? "grid";
+    backgroundImage.value = data.backgroundImage;
+    widgetBlur.value = data.widgetBlur;
+    applyCssVars();
     loaded.value = true;
   }
 
   async function saveDashboard() {
+    const config: DashboardConfig = {
+      widgets: widgets.value,
+      grid: grid.value,
+      layoutMode: layoutMode.value !== "grid" ? layoutMode.value : undefined,
+      backgroundImage: backgroundImage.value,
+      widgetBlur: widgetBlur.value,
+    };
     await fetch("/api/dashboard", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ widgets: widgets.value, grid: grid.value } satisfies DashboardConfig),
+      body: JSON.stringify(config),
     });
   }
 
@@ -197,8 +215,11 @@ export const useDashboardStore = defineStore("dashboard", () => {
     widgets.value = data.dashboard.widgets;
     if (data.dashboard.grid) {
       grid.value = data.dashboard.grid;
-      applyCssVars();
     }
+    layoutMode.value = data.dashboard.layoutMode ?? "grid";
+    backgroundImage.value = data.dashboard.backgroundImage;
+    widgetBlur.value = data.dashboard.widgetBlur;
+    applyCssVars();
     editMode.value = false;
     pendingWidget.value = null;
   }
@@ -264,6 +285,51 @@ export const useDashboardStore = defineStore("dashboard", () => {
     await fetchDashboard();
   }
 
+  async function updateBackgroundImage(bg?: BackgroundImage) {
+    backgroundImage.value = bg;
+    await saveDashboard();
+  }
+
+  async function updateLayoutMode(mode: LayoutMode) {
+    layoutMode.value = mode;
+    await saveDashboard();
+  }
+
+  async function updateWidgetBlur(value: number | undefined) {
+    widgetBlur.value = value;
+    document.documentElement.style.setProperty("--card-blur", `${value ?? 18}px`);
+    await saveDashboard();
+  }
+
+  async function moveWidgetFreeform(id: string, x: number, y: number) {
+    const widget = widgets.value.find((w) => w.id === id);
+    if (widget) {
+      widget.position.x = x;
+      widget.position.y = y;
+      await saveDashboard();
+    }
+  }
+
+  async function resizeWidgetFreeform(id: string, width: number, height: number, x?: number, y?: number) {
+    const widget = widgets.value.find((w) => w.id === id);
+    if (widget) {
+      widget.position.width = width;
+      widget.position.height = height;
+      if (x !== undefined) widget.position.x = x;
+      if (y !== undefined) widget.position.y = y;
+      await saveDashboard();
+    }
+  }
+
+  async function placePendingWidgetFreeform(x: number, y: number) {
+    if (!pendingWidget.value) return;
+    pendingWidget.value.position.x = x;
+    pendingWidget.value.position.y = y;
+    widgets.value.push(pendingWidget.value);
+    pendingWidget.value = null;
+    await saveDashboard();
+  }
+
   async function moveWidgetToDashboard(widgetId: string, targetDashboardId: string) {
     const res = await fetch("/api/dashboards/move-widget", {
       method: "POST",
@@ -284,6 +350,8 @@ export const useDashboardStore = defineStore("dashboard", () => {
     pendingWidget,
     dashboards,
     activeDashboardId,
+    layoutMode,
+    backgroundImage,
     fetchConfig,
     updateGrid,
     updateAppearance,
@@ -311,5 +379,12 @@ export const useDashboardStore = defineStore("dashboard", () => {
     moveWidgetToDashboard,
     exportBackup,
     importBackup,
+    updateBackgroundImage,
+    updateLayoutMode,
+    widgetBlur,
+    updateWidgetBlur,
+    moveWidgetFreeform,
+    resizeWidgetFreeform,
+    placePendingWidgetFreeform,
   };
 });

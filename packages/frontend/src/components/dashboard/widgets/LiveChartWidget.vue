@@ -128,9 +128,59 @@ function seedFromStore() {
   }
 }
 
+function onHistoryReceived(payload: { deviceId: string; capabilityId: string; points: { t: number; v: number }[] }) {
+  const cfg = props.widget.config;
+
+  if (payload.deviceId === cfg.deviceId && payload.capabilityId === cfg.capabilityId) {
+    const multiplier = cfg.multiplier ?? 1;
+    const existing = new Set(primaryData.value.map((p) => p.t));
+    const merged = [
+      ...primaryData.value,
+      ...payload.points
+        .filter((p) => !existing.has(p.t))
+        .map((p) => ({ t: p.t, v: p.v * multiplier })),
+    ].sort((a, b) => a.t - b.t);
+    primaryData.value = trimData(merged);
+  }
+
+  if (
+    cfg.secondary &&
+    payload.deviceId === cfg.secondary.deviceId &&
+    payload.capabilityId === cfg.secondary.capabilityId
+  ) {
+    const multiplier = cfg.secondary.multiplier ?? 1;
+    const existing = new Set(secondaryData.value.map((p) => p.t));
+    const merged = [
+      ...secondaryData.value,
+      ...payload.points
+        .filter((p) => !existing.has(p.t))
+        .map((p) => ({ t: p.t, v: p.v * multiplier })),
+    ].sort((a, b) => a.t - b.t);
+    secondaryData.value = trimData(merged);
+  }
+}
+
 onMounted(() => {
   seedFromStore();
   socket.on("capability:updated", onCapabilityUpdated);
+  socket.on("livechart:history", onHistoryReceived);
+
+  // Request historical data from server buffer
+  const cfg = props.widget.config;
+  const period = periodMs();
+  socket.emit("livechart:request-history", {
+    deviceId: cfg.deviceId,
+    capabilityId: cfg.capabilityId,
+    periodMs: period,
+  });
+  if (cfg.secondary) {
+    socket.emit("livechart:request-history", {
+      deviceId: cfg.secondary.deviceId,
+      capabilityId: cfg.secondary.capabilityId,
+      periodMs: period,
+    });
+  }
+
   trimInterval = setInterval(() => {
     primaryData.value = trimData(primaryData.value);
     secondaryData.value = trimData(secondaryData.value);
@@ -145,6 +195,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   socket.off("capability:updated", onCapabilityUpdated);
+  socket.off("livechart:history", onHistoryReceived);
   if (trimInterval) clearInterval(trimInterval);
   if (sampleInterval) clearInterval(sampleInterval);
 });
@@ -310,8 +361,8 @@ const chartOptions = computed(() => {
           label: (ctx: any) => {
             const dsIndex = ctx.datasetIndex;
             const unit = dsIndex === 0 ? primaryUnit : secUnit;
-            const val = ctx.parsed.y;
-            return unit ? `${val} ${unit}` : String(val);
+            const val = formatValue(ctx.parsed.y, dec);
+            return unit ? `${val} ${unit}` : val;
           },
         },
       },
@@ -340,6 +391,15 @@ const chartOptions = computed(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(var(--card-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--card-blur, 18px));
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.live-chart-widget:hover {
+  border-color: rgba(79, 195, 247, 0.5);
+  box-shadow: var(--card-shadow), 0 0 24px rgba(79, 195, 247, 0.12);
 }
 
 .chart-container {

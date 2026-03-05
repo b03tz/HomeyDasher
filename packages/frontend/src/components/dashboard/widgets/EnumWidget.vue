@@ -31,10 +31,35 @@ const displayMode = computed(() => props.widget.config.displayMode ?? "popup");
 
 // --- Popup mode ---
 const popoverOpen = ref(false);
-const popoverEl = ref<HTMLElement | null>(null);
+const triggerEl = ref<HTMLElement | null>(null);
+const popoverStyle = ref<Record<string, string>>({});
 
-function togglePopover() {
+function positionPopover() {
+  if (!triggerEl.value) return;
+  const rect = triggerEl.value.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  const maxH = 180;
+  const openAbove = spaceBelow < maxH && spaceAbove > spaceBelow;
+
+  popoverStyle.value = {
+    position: "fixed",
+    left: `${rect.left + rect.width / 2}px`,
+    transform: "translateX(-50%)",
+    minWidth: `${Math.max(rect.width, 120)}px`,
+    maxHeight: `${maxH}px`,
+    ...(openAbove
+      ? { bottom: `${window.innerHeight - rect.top + 4}px` }
+      : { top: `${rect.bottom + 4}px` }),
+  };
+}
+
+async function togglePopover() {
   popoverOpen.value = !popoverOpen.value;
+  if (popoverOpen.value) {
+    await nextTick();
+    positionPopover();
+  }
 }
 
 async function selectValue(id: string) {
@@ -44,9 +69,8 @@ async function selectValue(id: string) {
 }
 
 function onClickOutside(e: MouseEvent) {
-  if (popoverEl.value && !popoverEl.value.contains(e.target as Node)) {
-    popoverOpen.value = false;
-  }
+  if (triggerEl.value && triggerEl.value.contains(e.target as Node)) return;
+  popoverOpen.value = false;
 }
 
 onMounted(() => document.addEventListener("pointerdown", onClickOutside));
@@ -107,24 +131,26 @@ async function commitScroll() {
     <WidgetHeader :title="widget.title" :hidden="widget.hideTitle" />
 
     <!-- Popup mode -->
-    <div v-if="displayMode === 'popup'" class="enum-popup-body" ref="popoverEl">
-      <button class="enum-current" @pointerdown.stop @click="togglePopover">
+    <div v-if="displayMode === 'popup'" class="enum-popup-body">
+      <button ref="triggerEl" class="enum-current" @pointerdown.stop @click="togglePopover">
         {{ currentLabel }}
         <svg class="chevron" :class="{ open: popoverOpen }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
-      <div v-if="popoverOpen" class="enum-popover">
-        <button
-          v-for="opt in enumValues"
-          :key="opt.id"
-          class="enum-option"
-          :class="{ active: opt.id === localValue }"
-          @click="selectValue(opt.id)"
-        >
-          {{ opt.title }}
-        </button>
-      </div>
+      <Teleport to="body">
+        <div v-if="popoverOpen" class="enum-popover" :style="popoverStyle">
+          <button
+            v-for="opt in enumValues"
+            :key="opt.id"
+            class="enum-option"
+            :class="{ active: opt.id === localValue }"
+            @mousedown.prevent="selectValue(opt.id)"
+          >
+            {{ opt.title }}
+          </button>
+        </div>
+      </Teleport>
     </div>
 
     <!-- Scroll picker mode -->
@@ -161,6 +187,15 @@ async function commitScroll() {
   display: flex;
   flex-direction: column;
   overflow: visible;
+  backdrop-filter: blur(var(--card-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--card-blur, 18px));
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.enum-widget:hover {
+  border-color: rgba(79, 195, 247, 0.5);
+  box-shadow: var(--card-shadow), 0 0 24px rgba(79, 195, 247, 0.12);
 }
 
 /* --- Popup mode --- */
@@ -204,44 +239,6 @@ async function commitScroll() {
   transform: rotate(180deg);
 }
 
-.enum-popover {
-  position: absolute;
-  top: calc(50% + 22px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
-  min-width: 120px;
-  max-height: 180px;
-  overflow-y: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-}
-
-.enum-option {
-  padding: 7px 12px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 0.85rem;
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.enum-option:hover {
-  background: var(--bg-secondary);
-}
-
-.enum-option.active {
-  color: var(--accent);
-  font-weight: 600;
-}
 
 /* --- Scroll picker mode --- */
 .enum-scroll-body {
@@ -311,5 +308,42 @@ async function commitScroll() {
   font-weight: 600;
   font-size: 0.95rem;
   opacity: 1;
+}
+</style>
+
+<style>
+.enum-popover {
+  z-index: 9999;
+  overflow-y: auto;
+  background: rgba(15, 25, 45, 0.92);
+  border: 1px solid rgba(79, 195, 247, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(79, 195, 247, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+.enum-option {
+  padding: 7px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.enum-option:hover {
+  background: var(--bg-secondary);
+}
+
+.enum-option.active {
+  color: var(--accent);
+  font-weight: 600;
 }
 </style>
