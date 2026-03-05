@@ -130,7 +130,7 @@ docker run -d --name=homeydasher \
   -e TZ=Europe/Amsterdam \
   -v homeydasher-data:/app/data \
   --restart always \
-  ghcr.io/b03tz/homecontrol:latest
+  ghcr.io/b03tz/homeydasher:latest
 ```
 
 HomeyDasher will be available at `http://localhost:3001/`.
@@ -142,7 +142,7 @@ Create a `docker-compose.yml`:
 ```yaml
 services:
   homeydasher:
-    image: ghcr.io/b03tz/homecontrol:latest
+    image: ghcr.io/b03tz/homeydasher:latest
     container_name: homeydasher
     restart: unless-stopped
     ports:
@@ -195,7 +195,7 @@ docker run -d --name=homeydasher \
 -e TZ=Europe/Amsterdam \
 -v /volume1/docker/homeydasher:/app/data \
 --restart always \
-ghcr.io/b03tz/homecontrol:latest
+ghcr.io/b03tz/homeydasher:latest
 ```
 
 Save the task and press **OK** on the warning dialog. It will ask for your DSM password to confirm.
