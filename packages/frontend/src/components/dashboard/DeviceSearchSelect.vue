@@ -158,7 +158,7 @@ function onBlur() {
 <style>
 /* Dropdown is teleported to body — no scoped */
 .dropdown {
-  background: var(--bg-secondary);
+  background: rgb(12, 20, 40);
   border: 1px solid var(--border);
   border-radius: 8px;
   max-height: 260px;
