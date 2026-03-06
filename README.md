@@ -59,6 +59,23 @@ Two different dashboard layouts showing the variety of widgets working together 
   <img src="screenshots/screenshot_2.png" alt="Dashboard example 2" width="100%" />
 </p>
 
+### Battery & Image Switch Dashboard
+
+Battery indicators, image-based switches, and large slider/toggle controls.
+
+<p align="center">
+  <img src="screenshots/screenshot_battery.png" alt="Battery dashboard" width="100%" />
+</p>
+
+### Icon Picker (7,600+ Material Design Icons)
+
+Every switch, flow button, and dashboard can have a custom icon chosen from the full Material Design Icons library. Search by keyword to find the perfect icon.
+
+<p align="center">
+  <img src="screenshots/screenshot_icon_picker.png" alt="Icon picker" width="49%" />
+  <img src="screenshots/screenshot_icon_picker_search.png" alt="Icon picker search" width="49%" />
+</p>
+
 ### Add Widget Wizard
 
 Widgets are organized into four categories: Display, Charts, Control, and Utility. Pick a type, configure it, and place it on the grid.
