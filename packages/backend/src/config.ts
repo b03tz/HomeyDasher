@@ -8,6 +8,7 @@ export const config = {
   port: parseInt(process.env.PORT ?? "3001", 10),
   homeyAddress: process.env.HOMEY_ADDRESS ?? "",
   homeyToken: process.env.HOMEY_TOKEN ?? "",
+  go2rtcUrl: process.env.GO2RTC_URL ?? "http://localhost:1984",
 } as const;
 
 export function validateConfig() {

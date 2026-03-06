@@ -9,8 +9,16 @@ services:
       - HOMEY_ADDRESS=${HOMEY_ADDRESS}
       - HOMEY_TOKEN=${HOMEY_TOKEN}
       - DATA_DIR=/app/data
+      - GO2RTC_URL=http://go2rtc:1984
     volumes:
       - homecontrol-data:/app/data
+    depends_on:
+      - go2rtc
+
+  go2rtc:
+    image: alexxit/go2rtc
+    container_name: go2rtc
+    restart: unless-stopped
 
 volumes:
   homecontrol-data:

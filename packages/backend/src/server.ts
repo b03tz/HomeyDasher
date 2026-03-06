@@ -18,6 +18,7 @@ import { registerConfigRoutes } from "./routes/config.js";
 import { registerInsightRoutes } from "./routes/insights.js";
 import { registerFlowRoutes } from "./routes/flows.js";
 import { registerUploadRoutes } from "./routes/uploads.js";
+import { installUpgradeDispatch } from "./routes/go2rtc.js";
 import { setupSocketHandler } from "./socket/handler.js";
 import { config } from "./config.js";
 
@@ -87,6 +88,10 @@ export async function createServer() {
       cors: { origin: "*" },
     }
   );
+
+  // Install upgrade dispatcher AFTER Socket.io so we can intercept go2rtc
+  // WebSocket upgrades before Socket.io's destroyUpgrade timeout kills them
+  installUpgradeDispatch(app);
 
   setupSocketHandler(io, homey, liveChartBuffer);
 

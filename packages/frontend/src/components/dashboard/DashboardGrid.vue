@@ -23,6 +23,7 @@ import DashboardSwitchWidget from "./widgets/DashboardSwitchWidget.vue";
 import BarChartWidget from "./widgets/BarChartWidget.vue";
 import PieChartWidget from "./widgets/PieChartWidget.vue";
 import MultiLineChartWidget from "./widgets/MultiLineChartWidget.vue";
+import CameraWidget from "./widgets/CameraWidget.vue";
 
 defineProps<{
   widgets: DashboardWidget[];
@@ -308,6 +309,7 @@ onUnmounted(() => {
         <BarChartWidget v-else-if="widget.type === 'bar-chart'" :widget="widget" />
         <PieChartWidget v-else-if="widget.type === 'pie-chart'" :widget="widget" />
         <MultiLineChartWidget v-else-if="widget.type === 'multi-line-chart'" :widget="widget" />
+        <CameraWidget v-else-if="widget.type === 'camera'" :widget="widget" />
       </div>
 
       <!-- Edit mode: left half = drag, right half = settings -->

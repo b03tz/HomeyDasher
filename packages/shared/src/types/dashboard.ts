@@ -241,7 +241,8 @@ export type DashboardWidget =
   | TextWidget
   | BarChartWidget
   | PieChartWidget
-  | MultiLineChartWidget;
+  | MultiLineChartWidget
+  | CameraWidget;
 
 export interface DashboardConfig {
   widgets: DashboardWidget[];
@@ -346,6 +347,13 @@ export interface DashboardEntry {
   id: string;
   name: string;
   icon?: string;
+}
+
+export interface CameraWidget extends BaseWidget {
+  type: "camera";
+  config: {
+    rtspUrl: string;
+  };
 }
 
 export interface AppConfig {

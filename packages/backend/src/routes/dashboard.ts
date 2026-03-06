@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import type { DashboardConfig, DashboardEntry, GridConfig, AppConfig } from "@homecontrol/shared";
+import type { DashboardConfig, DashboardWidget, DashboardEntry, GridConfig, AppConfig } from "@homecontrol/shared";
 import { readFile, writeFile, mkdir, unlink, access, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { readConfig, writeConfig } from "./config.js";
 import type { LiveChartBufferService } from "../services/LiveChartBufferService.js";
+import { rtspUrlToStreamName, registerGo2rtcStream } from "./go2rtc.js";
 
 const DATA_DIR = process.env.DATA_DIR ?? resolve(import.meta.dirname, "../../../..");
 const OLD_DASHBOARD_PATH = resolve(DATA_DIR, "dashboard.json");
@@ -96,10 +97,40 @@ async function writeDashboard(config: DashboardConfig): Promise<void> {
   await writeFile(path, JSON.stringify(config, null, 2), "utf-8");
 }
 
+/** Collect all camera RTSP URLs from widgets (including container children) */
+function collectCameraUrls(widgets: DashboardWidget[]): string[] {
+  const urls: string[] = [];
+  for (const w of widgets) {
+    if (w.type === "camera" && w.config.rtspUrl) {
+      urls.push(w.config.rtspUrl);
+    }
+    if (w.type === "container") {
+      urls.push(...collectCameraUrls(w.config.widgets));
+    }
+  }
+  return urls;
+}
+
+/** Register all camera streams from a dashboard config with go2rtc */
+async function syncCameraStreams(config: DashboardConfig): Promise<void> {
+  const urls = collectCameraUrls(config.widgets);
+  const seen = new Set<string>();
+  for (const url of urls) {
+    const name = rtspUrlToStreamName(url);
+    if (seen.has(name)) continue;
+    seen.add(name);
+    registerGo2rtcStream(name, url).catch(() => {});
+  }
+}
+
 export function registerDashboardRoutes(app: FastifyInstance, liveChartBuffer: LiveChartBufferService) {
-  // Run migration before registering routes
+  // Run migration before registering routes, then sync camera streams
   app.addHook("onReady", async () => {
     await migrate();
+    try {
+      const dashboard = await readDashboard();
+      syncCameraStreams(dashboard).catch(() => {});
+    } catch { /* ignore — dashboard may not exist yet */ }
   });
 
   app.get("/api/dashboard", async () => {
@@ -115,6 +146,7 @@ export function registerDashboardRoutes(app: FastifyInstance, liveChartBuffer: L
   app.put<{ Body: DashboardConfig }>("/api/dashboard", async (request) => {
     const config = request.body;
     await writeDashboard(config);
+    syncCameraStreams(config).catch(() => {});
     liveChartBuffer.rescan().catch(() => {});
     return { success: true };
   });

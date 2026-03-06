@@ -46,6 +46,7 @@ export type {
   PieChartWidget,
   MultiLineChartSeries,
   MultiLineChartWidget,
+  CameraWidget,
   DashboardWidget,
   DashboardConfig,
   GridConfig,

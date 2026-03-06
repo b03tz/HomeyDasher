@@ -37,6 +37,7 @@ function getAutoColSpan(widget: DashboardWidget): number {
   if (widget.type === "dashboard-switch") return 1;
   if (widget.type === "enum") return 2;
   if (widget.type === "text") return 2;
+  if (widget.type === "camera") return 4;
   return 2;
 }
 
@@ -65,6 +66,7 @@ function getAutoRowSpan(widget: DashboardWidget): number {
   if (widget.type === "knob") return 2;
   if (widget.type === "weather") return 2;
   if (widget.type === "container") return widget.config.gridRows;
+  if (widget.type === "camera") return 3;
   return 1;
 }
 
@@ -105,6 +107,7 @@ export function getDefaultFreeformSize(widget: DashboardWidget): { width: number
     case "container": return { width: 400, height: 300 };
     case "text": return { width: 200, height: 100 };
     case "dashboard-switch": return { width: 120, height: 100 };
+    case "camera": return { width: 400, height: 300 };
     default: return { width: 200, height: 120 };
   }
 }

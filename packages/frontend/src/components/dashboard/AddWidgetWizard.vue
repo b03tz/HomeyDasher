@@ -8,6 +8,7 @@ import type {
   DashboardSwitchWidget, TextWidget, EnumWidget,
   BarChartWidget, PieChartWidget, PieChartSlice, PieChartStyle, PieChartAggregation,
   MultiLineChartWidget, MultiLineChartSeries,
+  CameraWidget,
   WidgetDeviceRef, ButtonFlowRef, NumberWidgetSize, GroupStatusMode, ClockStyle, ClockDisplay,
   StatusDisplayMode, WidgetTheme,
 } from "@homecontrol/shared";
@@ -33,6 +34,7 @@ import EnumWidgetConfig from "./widgets/EnumWidgetConfig.vue";
 import BarChartWidgetConfig from "./widgets/BarChartWidgetConfig.vue";
 import PieChartWidgetConfig from "./widgets/PieChartWidgetConfig.vue";
 import MultiLineChartWidgetConfig from "./widgets/MultiLineChartWidgetConfig.vue";
+import CameraWidgetConfig from "./widgets/CameraWidgetConfig.vue";
 import ContainerEditor from "./ContainerEditor.vue";
 import WidgetThemeEditor from "./widgets/WidgetThemeEditor.vue";
 import ImagePicker from "./ImagePicker.vue";
@@ -71,6 +73,7 @@ const WIDGET_TYPES: WidgetTypeInfo[] = [
   { type: "text", name: "Text", description: "Static text, HTML, or empty spacer", category: "utility" },
   { type: "container", name: "Container", description: "Group widgets in a nested mini-grid", category: "utility" },
   { type: "dashboard-switch", name: "Dashboard Switch", description: "Quick-switch to another dashboard", category: "utility" },
+  { type: "camera", name: "Camera", description: "Live RTSP stream via go2rtc", category: "display" },
 ];
 
 const CATEGORY_LABELS: Record<WidgetCategory, string> = {
@@ -209,6 +212,10 @@ const WIDGET_SVGS: Record<string, string> = {
     <line x1="10" y1="34" x2="56" y2="34" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
     <polyline points="14,28 22,22 30,26 38,14 46,18 54,10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
     <polyline points="14,20 22,24 30,18 38,22 46,12 54,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+  </svg>`,
+  camera: `<svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" transform="translate(12,10) scale(1.6)" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+    <circle cx="32" cy="22" r="5" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
   </svg>`,
 };
 
@@ -375,6 +382,9 @@ const multiLineResolution = ref("last24Hours");
 const multiLineHideXAxis = ref(false);
 const multiLineDecimals = ref<number | undefined>(undefined);
 
+// Camera state
+const cameraRtspUrl = ref("");
+
 // Dashboard switch state
 const dashSwitchTargetId = ref("");
 
@@ -490,6 +500,7 @@ function resetAll() {
   multiLineResolution.value = "last24Hours";
   multiLineHideXAxis.value = false;
   multiLineDecimals.value = undefined;
+  cameraRtspUrl.value = "";
   dashSwitchTargetId.value = "";
   configTab.value = "config";
   widgetTheme.value = {};
@@ -627,6 +638,8 @@ watch(() => props.open, (isOpen) => {
       multiLineResolution.value = props.editWidget.config.resolution;
       multiLineHideXAxis.value = props.editWidget.config.hideXAxis ?? false;
       multiLineDecimals.value = props.editWidget.config.decimals;
+    } else if (props.editWidget.type === "camera") {
+      cameraRtspUrl.value = props.editWidget.config.rtspUrl;
     }
   } else {
     step.value = 1;
@@ -813,6 +826,9 @@ function buildWidget(): DashboardWidget | null {
         },
       } as MultiLineChartWidget;
 
+    case "camera":
+      return { ...base, type: "camera", config: { rtspUrl: cameraRtspUrl.value } } as CameraWidget;
+
     default:
       return null;
   }
@@ -892,6 +908,7 @@ const isValid = () => {
       return !!(s as any).deviceId && !!(s as any).capabilityId;
     });
     case "multi-line-chart": return multiLineSeries.value.length >= 1 && multiLineSeries.value.every((s) => !!s.logId);
+    case "camera": return !!cameraRtspUrl.value;
     default: return false;
   }
 };
@@ -1306,6 +1323,13 @@ const isValid = () => {
               @update:hide-x-axis="multiLineHideXAxis = $event"
               @update:decimals="multiLineDecimals = $event"
             />
+
+            <CameraWidgetConfig
+              v-if="configTab === 'config' && selectedType === 'camera'"
+              :rtsp-url="cameraRtspUrl"
+              @update:rtsp-url="cameraRtspUrl = $event"
+            />
+
           </div>
           <!-- Move popup overlay -->
           <div v-if="movePopupOpen" class="move-popup-overlay" @click.self="movePopupOpen = false">
