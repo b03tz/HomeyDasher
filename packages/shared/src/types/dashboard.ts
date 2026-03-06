@@ -22,6 +22,7 @@ export interface WidgetDeviceRef {
   deviceId: string;
   capabilityId: string;
   sliderCapabilityId?: string;
+  icon?: string;
 }
 
 export interface WidgetTheme {
@@ -44,10 +45,18 @@ export interface BaseWidget {
   backgroundImage?: BackgroundImage;
 }
 
+export type SwitchDisplayMode = "button" | "toggle";
+export type SwitchSize = "small" | "medium" | "large";
+export type SwitchLabelPosition = "right" | "above" | "below" | "hidden";
+
 export interface SwitchWidget extends BaseWidget {
   type: "switch";
   config: {
     devices: WidgetDeviceRef[];
+    displayMode?: SwitchDisplayMode;
+    size?: SwitchSize;
+    hideLabels?: boolean;
+    labelPosition?: SwitchLabelPosition;
   };
 }
 
@@ -110,6 +119,9 @@ export interface GaugeWidget extends BaseWidget {
   };
 }
 
+export type SliderSize = "small" | "medium" | "large";
+export type SliderOrientation = "horizontal" | "vertical";
+
 export interface SliderWidget extends BaseWidget {
   type: "slider";
   config: {
@@ -119,6 +131,9 @@ export interface SliderWidget extends BaseWidget {
     min?: number;
     max?: number;
     step?: number;
+    size?: SliderSize;
+    orientation?: SliderOrientation;
+    hideValue?: boolean;
   };
 }
 
@@ -138,6 +153,7 @@ export interface ButtonFlowRef {
   flowId: string;
   label?: string;
   color?: string;
+  icon?: string;
 }
 
 export interface ButtonWidget extends BaseWidget {
@@ -242,7 +258,9 @@ export type DashboardWidget =
   | BarChartWidget
   | PieChartWidget
   | MultiLineChartWidget
-  | CameraWidget;
+  | CameraWidget
+  | BatteryWidget
+  | ImageSwitchWidget;
 
 export interface DashboardConfig {
   widgets: DashboardWidget[];
@@ -353,6 +371,38 @@ export interface CameraWidget extends BaseWidget {
   type: "camera";
   config: {
     rtspUrl: string;
+  };
+}
+
+export type BatteryOrientation = "horizontal" | "vertical";
+export type BatteryStyle = "bars" | "continuous";
+export type BatterySize = "small" | "medium" | "large";
+
+export interface BatteryWidget extends BaseWidget {
+  type: "battery";
+  config: {
+    deviceId: string;
+    capabilityId: string;
+    orientation: BatteryOrientation;
+    style: BatteryStyle;
+    size?: BatterySize;
+    color?: string;
+    unit?: string;
+    multiplier?: number;
+    min?: number;
+    max?: number;
+    decimals?: number;
+  };
+}
+
+export interface ImageSwitchWidget extends BaseWidget {
+  type: "image-switch";
+  config: {
+    deviceId: string;
+    capabilityId: string;
+    onImage: string;
+    offImage: string;
+    chromeless?: boolean;
   };
 }
 

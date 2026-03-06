@@ -1,15 +1,24 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import type { WidgetDeviceRef } from "@homecontrol/shared";
+import { ref, computed } from "vue";
+import type { WidgetDeviceRef, SwitchDisplayMode, SwitchSize, SwitchLabelPosition } from "@homecontrol/shared";
 import { useDeviceStore } from "../../../stores/devices";
 import DeviceSearchSelect from "../DeviceSearchSelect.vue";
+import IconPicker from "../IconPicker.vue";
+import { Icon } from "@iconify/vue";
+import { resolveIconName } from "../../../utils/iconResolver";
 
 const props = defineProps<{
   devices: WidgetDeviceRef[];
+  displayMode: SwitchDisplayMode;
+  size: SwitchSize;
+  labelPosition: SwitchLabelPosition;
 }>();
 
 const emit = defineEmits<{
   "update:devices": [devices: WidgetDeviceRef[]];
+  "update:displayMode": [v: SwitchDisplayMode];
+  "update:size": [v: SwitchSize];
+  "update:labelPosition": [v: SwitchLabelPosition];
 }>();
 
 const deviceStore = useDeviceStore();
@@ -18,7 +27,6 @@ const MAX_DEVICES = 8;
 
 function addDevice(ref: WidgetDeviceRef) {
   if (props.devices.length >= MAX_DEVICES) return;
-  // Auto-pick slider capability default
   const device = deviceStore.devices[ref.deviceId];
   let sliderCapabilityId: string | undefined;
   if (device) {
@@ -58,10 +66,42 @@ function getSliderOptions(ref: WidgetDeviceRef) {
 }
 
 const remaining = computed(() => MAX_DEVICES - props.devices.length);
+
+const iconPickerIndex = ref<number | null>(null);
+
+function updateIcon(index: number, icon: string) {
+  const updated = [...props.devices];
+  updated[index] = { ...updated[index], icon: icon || undefined };
+  emit("update:devices", updated);
+}
 </script>
 
 <template>
   <div class="switch-config">
+    <div class="row">
+      <div class="field">
+        <label class="config-label">Mode</label>
+        <div class="btn-group">
+          <button v-for="m in (['button', 'toggle'] as SwitchDisplayMode[])" :key="m" class="btn-option" :class="{ active: displayMode === m }" @click="emit('update:displayMode', m)">{{ m }}</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="config-label">Size</label>
+        <div class="btn-group">
+          <button v-for="s in (['small', 'medium', 'large'] as SwitchSize[])" :key="s" class="btn-option" :class="{ active: size === s }" @click="emit('update:size', s)">{{ s }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="config-label">Label</label>
+        <div class="btn-group">
+          <button v-for="lp in (['right', 'above', 'below', 'hidden'] as SwitchLabelPosition[])" :key="lp" class="btn-option" :class="{ active: labelPosition === lp }" @click="emit('update:labelPosition', lp)">{{ lp }}</button>
+        </div>
+      </div>
+    </div>
+
     <label class="config-label">
       Devices ({{ props.devices.length }}/{{ MAX_DEVICES }})
     </label>
@@ -80,8 +120,12 @@ const remaining = computed(() => MAX_DEVICES - props.devices.length);
           {{ deviceName(ref) }}
           <button class="chip-remove" @click="removeDevice(i)" aria-label="Remove device">&times;</button>
         </span>
+        <button class="icon-pick-btn" @click="iconPickerIndex = i" :title="ref.icon ? ref.icon : 'Pick icon'">
+          <Icon v-if="resolveIconName(ref.icon)" :icon="resolveIconName(ref.icon)!" :width="18" :height="18" />
+          <span v-else class="icon-pick-label">Icon</span>
+        </button>
         <select
-          v-if="getSliderOptions(ref).length > 0"
+          v-if="displayMode === 'button' && getSliderOptions(ref).length > 0"
           class="slider-select"
           :value="ref.sliderCapabilityId ?? ''"
           @change="updateSliderCapability(i, ($event.target as HTMLSelectElement).value)"
@@ -100,6 +144,13 @@ const remaining = computed(() => MAX_DEVICES - props.devices.length);
     <p v-if="remaining > 0 && props.devices.length > 0" class="hint">
       {{ remaining }} more device{{ remaining !== 1 ? 's' : '' }} allowed
     </p>
+
+    <IconPicker
+      :open="iconPickerIndex !== null"
+      :model-value="iconPickerIndex !== null ? (props.devices[iconPickerIndex]?.icon ?? '') : ''"
+      @update:model-value="(v: string) => { if (iconPickerIndex !== null) updateIcon(iconPickerIndex, v); }"
+      @close="iconPickerIndex = null"
+    />
   </div>
 </template>
 
@@ -115,6 +166,17 @@ const remaining = computed(() => MAX_DEVICES - props.devices.length);
   font-weight: 600;
   color: var(--text-secondary);
 }
+
+.row { display: flex; gap: 8px; }
+.field { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.btn-group { display: flex; gap: 4px; }
+.btn-option {
+  flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-secondary); color: var(--text-secondary); font-size: 0.8rem;
+  cursor: pointer; text-transform: capitalize; transition: all 0.15s;
+}
+.btn-option:hover { border-color: var(--accent); color: var(--text-primary); }
+.btn-option.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 .device-list {
   display: flex;
@@ -167,6 +229,31 @@ const remaining = computed(() => MAX_DEVICES - props.devices.length);
 
 .slider-select:focus {
   border-color: var(--accent);
+}
+
+.icon-pick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.icon-pick-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.icon-pick-label {
+  font-size: 0.65rem;
+  font-weight: 600;
 }
 
 .hint {

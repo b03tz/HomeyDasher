@@ -1,98 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import {
-  Home, Zap, Thermometer, Lightbulb, Lock, Droplet, Wind, Sun, Moon,
-  Power, Tv, Fan, Speaker, Camera, Shield, Bell, Wifi, Cloud,
-  Eye, Flame, Gauge, Timer, Clock, Heart, Star, Settings,
-  Sofa, Bath, CookingPot, Bed, Car, Trees, Flower2, Dog,
-  Blinds, DoorOpen, DoorClosed, Plug, BatteryCharging, CircuitBoard,
-  SunDim, Snowflake, CloudRain, Umbrella, Waves, Heater,
-  Microchip, Binary, Activity, BarChart3, PieChart, Signal,
-  LayoutGrid, LayoutDashboard, MonitorSmartphone, Smartphone,
-  Music, Volume2, Cctv, AlarmSmoke, Siren, KeyRound,
-  Lamp, LampDesk, LampFloor, Warehouse, Building2, Store,
-  Sunrise, Sunset, MoonStar, CloudSun,
-} from "lucide-vue-next";
-
-interface IconDef {
-  name: string;
-  component: any;
-}
-
-const ICONS: IconDef[] = [
-  { name: "Home", component: Home },
-  { name: "Zap", component: Zap },
-  { name: "Thermometer", component: Thermometer },
-  { name: "Lightbulb", component: Lightbulb },
-  { name: "Lock", component: Lock },
-  { name: "Droplet", component: Droplet },
-  { name: "Wind", component: Wind },
-  { name: "Sun", component: Sun },
-  { name: "Moon", component: Moon },
-  { name: "Power", component: Power },
-  { name: "Tv", component: Tv },
-  { name: "Fan", component: Fan },
-  { name: "Speaker", component: Speaker },
-  { name: "Camera", component: Camera },
-  { name: "Shield", component: Shield },
-  { name: "Bell", component: Bell },
-  { name: "Wifi", component: Wifi },
-  { name: "Cloud", component: Cloud },
-  { name: "Eye", component: Eye },
-  { name: "Flame", component: Flame },
-  { name: "Gauge", component: Gauge },
-  { name: "Timer", component: Timer },
-  { name: "Clock", component: Clock },
-  { name: "Heart", component: Heart },
-  { name: "Star", component: Star },
-  { name: "Settings", component: Settings },
-  { name: "Sofa", component: Sofa },
-  { name: "Bath", component: Bath },
-  { name: "CookingPot", component: CookingPot },
-  { name: "Bed", component: Bed },
-  { name: "Car", component: Car },
-  { name: "Trees", component: Trees },
-  { name: "Flower2", component: Flower2 },
-  { name: "Dog", component: Dog },
-  { name: "Blinds", component: Blinds },
-  { name: "DoorOpen", component: DoorOpen },
-  { name: "DoorClosed", component: DoorClosed },
-  { name: "Plug", component: Plug },
-  { name: "BatteryCharging", component: BatteryCharging },
-  { name: "CircuitBoard", component: CircuitBoard },
-  { name: "SunDim", component: SunDim },
-  { name: "Snowflake", component: Snowflake },
-  { name: "CloudRain", component: CloudRain },
-  { name: "Umbrella", component: Umbrella },
-  { name: "Waves", component: Waves },
-  { name: "Heater", component: Heater },
-  { name: "Microchip", component: Microchip },
-  { name: "Binary", component: Binary },
-  { name: "Activity", component: Activity },
-  { name: "BarChart3", component: BarChart3 },
-  { name: "PieChart", component: PieChart },
-  { name: "Signal", component: Signal },
-  { name: "LayoutGrid", component: LayoutGrid },
-  { name: "LayoutDashboard", component: LayoutDashboard },
-  { name: "MonitorSmartphone", component: MonitorSmartphone },
-  { name: "Smartphone", component: Smartphone },
-  { name: "Music", component: Music },
-  { name: "Volume2", component: Volume2 },
-  { name: "Cctv", component: Cctv },
-  { name: "AlarmSmoke", component: AlarmSmoke },
-  { name: "Siren", component: Siren },
-  { name: "KeyRound", component: KeyRound },
-  { name: "Lamp", component: Lamp },
-  { name: "LampDesk", component: LampDesk },
-  { name: "LampFloor", component: LampFloor },
-  { name: "Warehouse", component: Warehouse },
-  { name: "Building2", component: Building2 },
-  { name: "Store", component: Store },
-  { name: "Sunrise", component: Sunrise },
-  { name: "Sunset", component: Sunset },
-  { name: "MoonStar", component: MoonStar },
-  { name: "CloudSun", component: CloudSun },
-];
+import { ref, computed, onMounted } from "vue";
+import { Icon } from "@iconify/vue";
+import mdiData from "@iconify-json/mdi/icons.json";
 
 const props = defineProps<{
   modelValue?: string;
@@ -105,15 +14,45 @@ const emit = defineEmits<{
 }>();
 
 const search = ref("");
+const allNames = ref<string[]>([]);
+
+onMounted(() => {
+  allNames.value = Object.keys(mdiData.icons).sort();
+});
 
 const filtered = computed(() => {
-  if (!search.value) return ICONS;
-  const q = search.value.toLowerCase();
-  return ICONS.filter((i) => i.name.toLowerCase().includes(q));
+  if (!search.value) return allNames.value;
+  const q = search.value.toLowerCase().replace(/\s+/g, "-");
+  return allNames.value.filter((n) => n.includes(q));
+});
+
+// Virtualization: only render visible icons to avoid DOM overload
+const PAGE_SIZE = 200;
+const visibleCount = ref(PAGE_SIZE);
+
+const displayed = computed(() => filtered.value.slice(0, visibleCount.value));
+const hasMore = computed(() => visibleCount.value < filtered.value.length);
+
+function onScroll(e: Event) {
+  const el = e.target as HTMLElement;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+    visibleCount.value = Math.min(visibleCount.value + PAGE_SIZE, filtered.value.length);
+  }
+}
+
+// Reset visible count on search change
+import { watch } from "vue";
+watch(search, () => {
+  visibleCount.value = PAGE_SIZE;
 });
 
 function select(name: string) {
   emit("update:modelValue", name);
+  emit("close");
+}
+
+function clearIcon() {
+  emit("update:modelValue", "");
   emit("close");
 }
 </script>
@@ -124,6 +63,7 @@ function select(name: string) {
       <div class="icon-picker-modal">
         <div class="icon-picker-header">
           <h3>Pick Icon</h3>
+          <span class="icon-count">{{ filtered.length.toLocaleString() }} icons</span>
           <button class="close-btn" @click="emit('close')">&times;</button>
         </div>
         <div class="icon-picker-search">
@@ -131,20 +71,24 @@ function select(name: string) {
             v-model="search"
             type="text"
             class="search-input"
-            placeholder="Search icons..."
+            placeholder="Search icons (e.g. light, thermostat, door)..."
           />
         </div>
-        <div class="icon-grid">
+        <div v-if="modelValue" class="icon-picker-actions">
+          <button class="clear-btn" @click="clearIcon">Clear icon</button>
+        </div>
+        <div class="icon-grid" @scroll="onScroll">
           <button
-            v-for="icon in filtered"
-            :key="icon.name"
+            v-for="name in displayed"
+            :key="name"
             class="icon-cell"
-            :class="{ selected: modelValue === icon.name }"
-            :title="icon.name"
-            @click="select(icon.name)"
+            :class="{ selected: modelValue === name }"
+            :title="name"
+            @click="select(name)"
           >
-            <component :is="icon.component" :size="24" />
+            <Icon :icon="'mdi:' + name" :width="24" :height="24" />
           </button>
+          <p v-if="hasMore" class="load-more">Scroll for more...</p>
           <p v-if="filtered.length === 0" class="no-results">No icons found</p>
         </div>
       </div>
@@ -168,7 +112,7 @@ function select(name: string) {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   width: 90%;
-  max-width: 420px;
+  max-width: 480px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -186,6 +130,12 @@ function select(name: string) {
   flex: 1;
   font-size: 1rem;
   font-weight: 600;
+}
+
+.icon-count {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-right: 12px;
 }
 
 .close-btn {
@@ -216,10 +166,31 @@ function select(name: string) {
   color: var(--text-primary);
   font-size: 0.85rem;
   outline: none;
+  box-sizing: border-box;
 }
 
 .search-input:focus {
   border-color: var(--accent);
+}
+
+.icon-picker-actions {
+  padding: 8px 16px 0;
+}
+
+.clear-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.clear-btn:hover {
+  border-color: var(--danger, #f44336);
+  color: var(--danger, #f44336);
 }
 
 .icon-grid {
@@ -256,11 +227,12 @@ function select(name: string) {
   color: var(--accent);
 }
 
+.load-more,
 .no-results {
   grid-column: 1 / -1;
   text-align: center;
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  padding: 16px 0;
+  font-size: 0.8rem;
+  padding: 12px 0;
 }
 </style>

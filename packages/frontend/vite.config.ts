@@ -4,6 +4,15 @@ import { resolve } from "node:path";
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "mdi-icons": ["@iconify-json/mdi/icons.json"],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),

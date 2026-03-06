@@ -9,8 +9,12 @@ import type {
   BarChartWidget, PieChartWidget, PieChartSlice, PieChartStyle, PieChartAggregation,
   MultiLineChartWidget, MultiLineChartSeries,
   CameraWidget,
+  BatteryWidget, BatteryOrientation, BatteryStyle, BatterySize,
+  ImageSwitchWidget,
   WidgetDeviceRef, ButtonFlowRef, NumberWidgetSize, GroupStatusMode, ClockStyle, ClockDisplay,
   StatusDisplayMode, WidgetTheme,
+  SliderSize, SliderOrientation,
+  SwitchDisplayMode, SwitchSize, SwitchLabelPosition,
 } from "@homecontrol/shared";
 import { useDashboardStore } from "../../stores/dashboard";
 import { nextAvailableRow } from "../../utils/gridUtils";
@@ -35,6 +39,8 @@ import BarChartWidgetConfig from "./widgets/BarChartWidgetConfig.vue";
 import PieChartWidgetConfig from "./widgets/PieChartWidgetConfig.vue";
 import MultiLineChartWidgetConfig from "./widgets/MultiLineChartWidgetConfig.vue";
 import CameraWidgetConfig from "./widgets/CameraWidgetConfig.vue";
+import BatteryWidgetConfig from "./widgets/BatteryWidgetConfig.vue";
+import ImageSwitchWidgetConfig from "./widgets/ImageSwitchWidgetConfig.vue";
 import ContainerEditor from "./ContainerEditor.vue";
 import WidgetThemeEditor from "./widgets/WidgetThemeEditor.vue";
 import ImagePicker from "./ImagePicker.vue";
@@ -74,6 +80,8 @@ const WIDGET_TYPES: WidgetTypeInfo[] = [
   { type: "container", name: "Container", description: "Group widgets in a nested mini-grid", category: "utility" },
   { type: "dashboard-switch", name: "Dashboard Switch", description: "Quick-switch to another dashboard", category: "utility" },
   { type: "camera", name: "Camera", description: "Live RTSP stream via go2rtc", category: "display" },
+  { type: "battery", name: "Battery", description: "Battery / level indicator with bars or fill", category: "display" },
+  { type: "image-switch", name: "Image Switch", description: "Toggle with custom on/off images", category: "control" },
 ];
 
 const CATEGORY_LABELS: Record<WidgetCategory, string> = {
@@ -217,6 +225,24 @@ const WIDGET_SVGS: Record<string, string> = {
     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" transform="translate(12,10) scale(1.6)" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
     <circle cx="32" cy="22" r="5" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
   </svg>`,
+  battery: `<svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="10" width="40" height="20" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+    <rect x="48" y="15" width="6" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+    <rect x="12" y="14" width="8" height="12" rx="1" fill="currentColor" opacity="0.7"/>
+    <rect x="22" y="14" width="8" height="12" rx="1" fill="currentColor" opacity="0.5"/>
+    <rect x="32" y="14" width="8" height="12" rx="1" fill="currentColor" opacity="0.3"/>
+  </svg>`,
+  "image-switch": `<svg viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="4" width="24" height="32" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+    <rect x="34" y="4" width="24" height="32" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+    <circle cx="18" cy="16" r="5" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+    <line x1="14" y1="16" x2="22" y2="16" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+    <circle cx="46" cy="16" r="5" stroke="currentColor" stroke-width="1" opacity="0.6"/>
+    <line x1="46" y1="12" x2="46" y2="20" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+    <line x1="42" y1="16" x2="50" y2="16" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+    <text x="18" y="30" text-anchor="middle" font-family="system-ui" font-size="6" fill="currentColor" opacity="0.3">OFF</text>
+    <text x="46" y="30" text-anchor="middle" font-family="system-ui" font-size="6" fill="currentColor" opacity="0.6">ON</text>
+  </svg>`,
 };
 
 const props = defineProps<{
@@ -248,6 +274,9 @@ const hideTitle = ref(false);
 
 // Switch state
 const switchDevices = ref<WidgetDeviceRef[]>([]);
+const switchDisplayMode = ref<SwitchDisplayMode>("button");
+const switchSize = ref<SwitchSize>("medium");
+const switchLabelPosition = ref<SwitchLabelPosition>("right");
 
 // Chart state
 const chartLogId = ref("");
@@ -290,6 +319,9 @@ const sliderUnit = ref("");
 const sliderMin = ref<number | undefined>(undefined);
 const sliderMax = ref<number | undefined>(undefined);
 const sliderStep = ref<number | undefined>(undefined);
+const sliderSize = ref<SliderSize>("medium");
+const sliderOrientation = ref<SliderOrientation>("horizontal");
+const sliderHideValue = ref(false);
 
 // Knob state
 const knobDeviceId = ref("");
@@ -382,6 +414,26 @@ const multiLineResolution = ref("last24Hours");
 const multiLineHideXAxis = ref(false);
 const multiLineDecimals = ref<number | undefined>(undefined);
 
+// Battery state
+const batteryDeviceId = ref("");
+const batteryCapabilityId = ref("");
+const batteryOrientation = ref<BatteryOrientation>("horizontal");
+const batteryStyle = ref<BatteryStyle>("bars");
+const batterySize = ref<BatterySize>("medium");
+const batteryColor = ref("#4fc3f7");
+const batteryUnit = ref("");
+const batteryMultiplier = ref(1);
+const batteryMin = ref<number | undefined>(undefined);
+const batteryMax = ref<number | undefined>(undefined);
+const batteryDecimals = ref<number | undefined>(undefined);
+
+// Image switch state
+const imgSwitchDeviceId = ref("");
+const imgSwitchCapabilityId = ref("");
+const imgSwitchOnImage = ref("");
+const imgSwitchOffImage = ref("");
+const imgSwitchChromeless = ref(false);
+
 // Camera state
 const cameraRtspUrl = ref("");
 
@@ -402,6 +454,9 @@ const bgPickerOpen = ref(false);
 function resetAll() {
   hideTitle.value = false;
   switchDevices.value = [];
+  switchDisplayMode.value = "button";
+  switchSize.value = "medium";
+  switchLabelPosition.value = "right";
   chartLogId.value = "";
   chartResolution.value = "last24Hours";
   chartUnit.value = "";
@@ -437,6 +492,9 @@ function resetAll() {
   sliderMin.value = undefined;
   sliderMax.value = undefined;
   sliderStep.value = undefined;
+  sliderSize.value = "medium";
+  sliderOrientation.value = "horizontal";
+  sliderHideValue.value = false;
   knobDeviceId.value = "";
   knobCapabilityId.value = "";
   knobUnit.value = "";
@@ -500,6 +558,22 @@ function resetAll() {
   multiLineResolution.value = "last24Hours";
   multiLineHideXAxis.value = false;
   multiLineDecimals.value = undefined;
+  batteryDeviceId.value = "";
+  batteryCapabilityId.value = "";
+  batteryOrientation.value = "horizontal";
+  batteryStyle.value = "bars";
+  batterySize.value = "medium";
+  batteryColor.value = "#4fc3f7";
+  batteryUnit.value = "";
+  batteryMultiplier.value = 1;
+  batteryMin.value = undefined;
+  batteryMax.value = undefined;
+  batteryDecimals.value = undefined;
+  imgSwitchDeviceId.value = "";
+  imgSwitchCapabilityId.value = "";
+  imgSwitchOnImage.value = "";
+  imgSwitchOffImage.value = "";
+  imgSwitchChromeless.value = false;
   cameraRtspUrl.value = "";
   dashSwitchTargetId.value = "";
   configTab.value = "config";
@@ -521,6 +595,9 @@ watch(() => props.open, (isOpen) => {
 
     if (props.editWidget.type === "switch") {
       switchDevices.value = [...props.editWidget.config.devices];
+      switchDisplayMode.value = props.editWidget.config.displayMode ?? "button";
+      switchSize.value = props.editWidget.config.size ?? "medium";
+      switchLabelPosition.value = props.editWidget.config.labelPosition ?? "right";
     } else if (props.editWidget.type === "chart") {
       chartLogId.value = props.editWidget.config.logId;
       chartResolution.value = props.editWidget.config.resolution;
@@ -562,6 +639,9 @@ watch(() => props.open, (isOpen) => {
       sliderMin.value = props.editWidget.config.min;
       sliderMax.value = props.editWidget.config.max;
       sliderStep.value = props.editWidget.config.step;
+      sliderSize.value = props.editWidget.config.size ?? "medium";
+      sliderOrientation.value = props.editWidget.config.orientation ?? "horizontal";
+      sliderHideValue.value = props.editWidget.config.hideValue ?? false;
     } else if (props.editWidget.type === "knob") {
       knobDeviceId.value = props.editWidget.config.deviceId;
       knobCapabilityId.value = props.editWidget.config.capabilityId;
@@ -640,6 +720,24 @@ watch(() => props.open, (isOpen) => {
       multiLineDecimals.value = props.editWidget.config.decimals;
     } else if (props.editWidget.type === "camera") {
       cameraRtspUrl.value = props.editWidget.config.rtspUrl;
+    } else if (props.editWidget.type === "battery") {
+      batteryDeviceId.value = props.editWidget.config.deviceId;
+      batteryCapabilityId.value = props.editWidget.config.capabilityId;
+      batteryOrientation.value = props.editWidget.config.orientation ?? "horizontal";
+      batteryStyle.value = props.editWidget.config.style ?? "bars";
+      batterySize.value = props.editWidget.config.size ?? "medium";
+      batteryColor.value = props.editWidget.config.color ?? "#4fc3f7";
+      batteryUnit.value = props.editWidget.config.unit ?? "";
+      batteryMultiplier.value = props.editWidget.config.multiplier ?? 1;
+      batteryMin.value = props.editWidget.config.min;
+      batteryMax.value = props.editWidget.config.max;
+      batteryDecimals.value = props.editWidget.config.decimals;
+    } else if (props.editWidget.type === "image-switch") {
+      imgSwitchDeviceId.value = props.editWidget.config.deviceId;
+      imgSwitchCapabilityId.value = props.editWidget.config.capabilityId;
+      imgSwitchOnImage.value = props.editWidget.config.onImage;
+      imgSwitchOffImage.value = props.editWidget.config.offImage;
+      imgSwitchChromeless.value = props.editWidget.config.chromeless ?? false;
     }
   } else {
     step.value = 1;
@@ -678,7 +776,7 @@ function buildWidget(): DashboardWidget | null {
 
   switch (selectedType.value) {
     case "switch":
-      return { ...base, type: "switch", config: { devices: switchDevices.value } } as SwitchWidget;
+      return { ...base, type: "switch", config: { devices: switchDevices.value, displayMode: switchDisplayMode.value !== "button" ? switchDisplayMode.value : undefined, size: switchSize.value !== "medium" ? switchSize.value : undefined, labelPosition: switchLabelPosition.value !== "right" ? switchLabelPosition.value : undefined } } as SwitchWidget;
 
     case "chart": {
       const chartConfig: ChartWidget["config"] = {
@@ -715,7 +813,7 @@ function buildWidget(): DashboardWidget | null {
     }
 
     case "slider":
-      return { ...base, type: "slider", config: { deviceId: sliderDeviceId.value, capabilityId: sliderCapabilityId.value, unit: sliderUnit.value || undefined, min: sliderMin.value, max: sliderMax.value, step: sliderStep.value } } as SliderWidget;
+      return { ...base, type: "slider", config: { deviceId: sliderDeviceId.value, capabilityId: sliderCapabilityId.value, unit: sliderUnit.value || undefined, min: sliderMin.value, max: sliderMax.value, step: sliderStep.value, size: sliderSize.value !== "medium" ? sliderSize.value : undefined, orientation: sliderOrientation.value !== "horizontal" ? sliderOrientation.value : undefined, hideValue: sliderHideValue.value || undefined } } as SliderWidget;
 
     case "knob":
       return { ...base, type: "knob", config: { deviceId: knobDeviceId.value, capabilityId: knobCapabilityId.value, unit: knobUnit.value || undefined, min: knobMin.value, max: knobMax.value, step: knobStep.value } } as KnobWidget;
@@ -826,8 +924,32 @@ function buildWidget(): DashboardWidget | null {
         },
       } as MultiLineChartWidget;
 
+    case "image-switch":
+      return { ...base, type: "image-switch", config: {
+        deviceId: imgSwitchDeviceId.value,
+        capabilityId: imgSwitchCapabilityId.value,
+        onImage: imgSwitchOnImage.value,
+        offImage: imgSwitchOffImage.value,
+        chromeless: imgSwitchChromeless.value || undefined,
+      }} as ImageSwitchWidget;
+
     case "camera":
       return { ...base, type: "camera", config: { rtspUrl: cameraRtspUrl.value } } as CameraWidget;
+
+    case "battery":
+      return { ...base, type: "battery", config: {
+        deviceId: batteryDeviceId.value,
+        capabilityId: batteryCapabilityId.value,
+        orientation: batteryOrientation.value,
+        style: batteryStyle.value,
+        size: batterySize.value !== "medium" ? batterySize.value : undefined,
+        color: batteryColor.value !== "#4fc3f7" ? batteryColor.value : undefined,
+        unit: batteryUnit.value || undefined,
+        multiplier: batteryMultiplier.value !== 1 ? batteryMultiplier.value : undefined,
+        min: batteryMin.value,
+        max: batteryMax.value,
+        decimals: batteryDecimals.value,
+      }} as BatteryWidget;
 
     default:
       return null;
@@ -908,7 +1030,9 @@ const isValid = () => {
       return !!(s as any).deviceId && !!(s as any).capabilityId;
     });
     case "multi-line-chart": return multiLineSeries.value.length >= 1 && multiLineSeries.value.every((s) => !!s.logId);
+    case "image-switch": return !!imgSwitchDeviceId.value && !!imgSwitchCapabilityId.value && !!imgSwitchOnImage.value && !!imgSwitchOffImage.value;
     case "camera": return !!cameraRtspUrl.value;
+    case "battery": return !!batteryDeviceId.value && !!batteryCapabilityId.value;
     default: return false;
   }
 };
@@ -1053,7 +1177,13 @@ const isValid = () => {
             <SwitchWidgetConfig
               v-if="configTab === 'config' && selectedType === 'switch'"
               :devices="switchDevices"
+              :display-mode="switchDisplayMode"
+              :size="switchSize"
+              :label-position="switchLabelPosition"
               @update:devices="switchDevices = $event"
+              @update:display-mode="switchDisplayMode = $event"
+              @update:size="switchSize = $event"
+              @update:label-position="switchLabelPosition = $event"
             />
 
             <ChartWidgetConfig
@@ -1138,12 +1268,18 @@ const isValid = () => {
               :min="sliderMin"
               :max="sliderMax"
               :step="sliderStep"
+              :size="sliderSize"
+              :orientation="sliderOrientation"
+              :hide-value="sliderHideValue"
               @update:device-id="sliderDeviceId = $event"
               @update:capability-id="sliderCapabilityId = $event"
               @update:unit="sliderUnit = $event"
               @update:min="sliderMin = $event"
               @update:max="sliderMax = $event"
               @update:step="sliderStep = $event"
+              @update:size="sliderSize = $event"
+              @update:orientation="sliderOrientation = $event"
+              @update:hide-value="sliderHideValue = $event"
             />
 
             <KnobWidgetConfig
@@ -1328,6 +1464,46 @@ const isValid = () => {
               v-if="configTab === 'config' && selectedType === 'camera'"
               :rtsp-url="cameraRtspUrl"
               @update:rtsp-url="cameraRtspUrl = $event"
+            />
+
+            <BatteryWidgetConfig
+              v-if="configTab === 'config' && selectedType === 'battery'"
+              :device-id="batteryDeviceId"
+              :capability-id="batteryCapabilityId"
+              :orientation="batteryOrientation"
+              :style="batteryStyle"
+              :size="batterySize"
+              :color="batteryColor"
+              :unit="batteryUnit"
+              :multiplier="batteryMultiplier"
+              :min="batteryMin"
+              :max="batteryMax"
+              :decimals="batteryDecimals"
+              @update:device-id="batteryDeviceId = $event"
+              @update:capability-id="batteryCapabilityId = $event"
+              @update:orientation="batteryOrientation = $event"
+              @update:style="batteryStyle = $event"
+              @update:size="batterySize = $event"
+              @update:color="batteryColor = $event"
+              @update:unit="batteryUnit = $event"
+              @update:multiplier="batteryMultiplier = $event"
+              @update:min="batteryMin = $event"
+              @update:max="batteryMax = $event"
+              @update:decimals="batteryDecimals = $event"
+            />
+
+            <ImageSwitchWidgetConfig
+              v-if="configTab === 'config' && selectedType === 'image-switch'"
+              :device-id="imgSwitchDeviceId"
+              :capability-id="imgSwitchCapabilityId"
+              :on-image="imgSwitchOnImage"
+              :off-image="imgSwitchOffImage"
+              :chromeless="imgSwitchChromeless"
+              @update:device-id="imgSwitchDeviceId = $event"
+              @update:capability-id="imgSwitchCapabilityId = $event"
+              @update:on-image="imgSwitchOnImage = $event"
+              @update:off-image="imgSwitchOffImage = $event"
+              @update:chromeless="imgSwitchChromeless = $event"
             />
 
           </div>

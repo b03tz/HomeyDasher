@@ -23,13 +23,14 @@
 - **Per-widget theming** — Customize colors, backgrounds, and images on every widget individually
 - **Background images** — Set custom backgrounds per dashboard or per widget with blur and overlay controls
 - **Backup & restore** — Export and import dashboard configurations as JSON
+- **7,600+ icons** — Material Design Icons (MDI) via Iconify, bundled offline — searchable icon picker for switches, buttons, dashboards, and more
 - **Dark themed** — Built for always-on wall-mounted displays
 - **Camera streams** — Live RTSP camera feeds via go2rtc (MSE/WebSocket)
 - **Docker ready** — Deploy with Docker Compose (includes go2rtc sidecar for camera streams)
 
 ### Widget Library
 
-**20 widget types** across four categories:
+**22 widget types** across four categories:
 
 | Display | Charts | Control | Utility |
 |---------|--------|---------|---------|
@@ -38,8 +39,9 @@
 | Gauge | Bar Chart | Knob | Dashboard Switch |
 | Group Status | Pie / Doughnut | Flow Button | |
 | Weather | Multi-Line Chart | Enum | |
-| Clock | | | |
+| Clock | | Image Switch | |
 | Camera | | | |
+| Battery | | | |
 
 ---
 

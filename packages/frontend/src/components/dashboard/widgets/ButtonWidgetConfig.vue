@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from "vue";
 import type { ButtonFlowRef } from "@homecontrol/shared";
+import IconPicker from "../IconPicker.vue";
+import { Icon } from "@iconify/vue";
+import { resolveIconName } from "../../../utils/iconResolver";
 
 const props = defineProps<{
   flows: ButtonFlowRef[];
@@ -91,6 +94,14 @@ function updateColor(index: number, color: string) {
   emit("update:flows", updated);
 }
 
+function updateIcon(index: number, icon: string) {
+  const updated = [...props.flows];
+  updated[index] = { ...updated[index], icon: icon || undefined };
+  emit("update:flows", updated);
+}
+
+const iconPickerIndex = ref<number | null>(null);
+
 function flowName(flowId: string) {
   return allFlows.value.find(f => f.id === flowId)?.name ?? "Unknown flow";
 }
@@ -147,6 +158,10 @@ const remaining = computed(() => MAX_FLOWS - props.flows.length);
           :value="ref.label ?? ''"
           @input="updateLabel(i, ($event.target as HTMLInputElement).value)"
         />
+        <button class="icon-pick-btn" @click="iconPickerIndex = i" :title="ref.icon ? ref.icon : 'Pick icon'">
+          <Icon v-if="resolveIconName(ref.icon)" :icon="resolveIconName(ref.icon)!" :width="18" :height="18" />
+          <span v-else class="icon-pick-label">Icon</span>
+        </button>
         <input
           type="color"
           class="color-picker"
@@ -159,6 +174,13 @@ const remaining = computed(() => MAX_FLOWS - props.flows.length);
     <p v-if="remaining > 0 && props.flows.length > 0" class="hint">
       {{ remaining }} more flow{{ remaining !== 1 ? 's' : '' }} allowed
     </p>
+
+    <IconPicker
+      :open="iconPickerIndex !== null"
+      :model-value="iconPickerIndex !== null ? (props.flows[iconPickerIndex]?.icon ?? '') : ''"
+      @update:model-value="(v: string) => { if (iconPickerIndex !== null) updateIcon(iconPickerIndex, v); }"
+      @close="iconPickerIndex = null"
+    />
   </div>
 </template>
 
@@ -264,6 +286,31 @@ const remaining = computed(() => MAX_FLOWS - props.flows.length);
   cursor: pointer;
   padding: 2px;
   flex-shrink: 0;
+}
+
+.icon-pick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.icon-pick-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.icon-pick-label {
+  font-size: 0.65rem;
+  font-weight: 600;
 }
 
 .hint {

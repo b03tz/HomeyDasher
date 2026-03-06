@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import type { ButtonFlowRef } from "@homecontrol/shared";
+import { Icon } from "@iconify/vue";
+import { resolveIconName } from "../../../utils/iconResolver";
 
 const props = defineProps<{
   flowRef: ButtonFlowRef;
@@ -22,6 +24,7 @@ onMounted(async () => {
 });
 
 const displayName = computed(() => props.flowRef.label || flowName.value || "Flow");
+const iconName = computed(() => resolveIconName(props.flowRef.icon));
 
 async function triggerFlow() {
   if (firing.value) return;
@@ -43,7 +46,8 @@ async function triggerFlow() {
     :style="flowRef.color ? { '--btn-color': flowRef.color } : {}"
     @click="triggerFlow"
   >
-    <svg class="play-icon" viewBox="0 0 24 24">
+    <Icon v-if="iconName" :icon="iconName" class="play-icon" />
+    <svg v-else class="play-icon" viewBox="0 0 24 24">
       <polygon points="7 4 20 12 7 20" fill="currentColor" />
     </svg>
     <span class="flow-label">{{ displayName }}</span>
@@ -98,6 +102,9 @@ async function triggerFlow() {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
+}
+
+svg.play-icon {
   margin-left: 3px; /* optical centering — triangle visually leans left */
 }
 

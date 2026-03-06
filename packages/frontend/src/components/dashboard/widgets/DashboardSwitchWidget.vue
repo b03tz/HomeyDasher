@@ -2,8 +2,8 @@
 import { computed } from "vue";
 import type { DashboardSwitchWidget } from "@homecontrol/shared";
 import { useDashboardStore } from "../../../stores/dashboard";
-import { resolveIcon } from "../../../utils/iconResolver";
-import { LayoutDashboard } from "lucide-vue-next";
+import { resolveIconName } from "../../../utils/iconResolver";
+import { Icon } from "@iconify/vue";
 
 const props = defineProps<{ widget: DashboardSwitchWidget }>();
 const dashboardStore = useDashboardStore();
@@ -12,10 +12,9 @@ const targetDashboard = computed(() =>
   dashboardStore.dashboards.find((d) => d.id === props.widget.config.targetDashboardId)
 );
 
-const iconComponent = computed(() => {
+const iconId = computed(() => {
   const name = targetDashboard.value?.icon;
-  if (!name) return LayoutDashboard;
-  return resolveIcon(name) || LayoutDashboard;
+  return resolveIconName(name) ?? "mdi:view-dashboard";
 });
 
 async function handleClick() {
@@ -28,7 +27,7 @@ async function handleClick() {
 <template>
   <div class="dashboard-switch-widget" @click="handleClick">
     <div class="switch-icon">
-      <component :is="iconComponent" :size="24" />
+      <Icon :icon="iconId" :width="24" :height="24" />
     </div>
     <div class="switch-info">
       <span v-if="!widget.hideTitle" class="switch-title">{{ widget.title }}</span>

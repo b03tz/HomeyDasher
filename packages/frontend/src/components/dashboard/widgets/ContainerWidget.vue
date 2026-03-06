@@ -22,6 +22,8 @@ import BarChartWidget from "./BarChartWidget.vue";
 import PieChartWidget from "./PieChartWidget.vue";
 import MultiLineChartWidget from "./MultiLineChartWidget.vue";
 import CameraWidget from "./CameraWidget.vue";
+import BatteryWidget from "./BatteryWidget.vue";
+import ImageSwitchWidget from "./ImageSwitchWidget.vue";
 
 const props = defineProps<{
   widget: ContainerWidgetType;
@@ -96,6 +98,8 @@ function hasChildBg(child: ContainerWidgetType["config"]["widgets"][number]): bo
         <PieChartWidget v-else-if="child.type === 'pie-chart'" :widget="child" />
         <MultiLineChartWidget v-else-if="child.type === 'multi-line-chart'" :widget="child" />
         <CameraWidget v-else-if="child.type === 'camera'" :widget="child" />
+        <BatteryWidget v-else-if="child.type === 'battery'" :widget="child" />
+        <ImageSwitchWidget v-else-if="child.type === 'image-switch'" :widget="child" />
       </div>
     </div>
   </div>

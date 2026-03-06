@@ -9,13 +9,17 @@ defineProps<{
 </script>
 
 <template>
-  <div class="switch-widget">
+  <div class="switch-widget" :class="[`mode-${widget.config.displayMode ?? 'button'}`, `size-${widget.config.size ?? 'medium'}`]">
     <WidgetHeader :title="widget.title" :hidden="widget.hideTitle" />
     <div class="switch-buttons">
       <SwitchItem
         v-for="ref in widget.config.devices"
         :key="ref.deviceId + ref.capabilityId"
         :device-ref="ref"
+        :display-mode="widget.config.displayMode ?? 'button'"
+        :size="widget.config.size ?? 'medium'"
+        :hide-label="widget.config.hideLabels ?? false"
+        :label-position="widget.config.labelPosition ?? 'right'"
       />
     </div>
   </div>
@@ -46,5 +50,12 @@ defineProps<{
   gap: 8px;
   flex: 1;
   min-height: 0;
+}
+
+.mode-toggle .switch-buttons {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
 }
 </style>

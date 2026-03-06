@@ -4,8 +4,8 @@ import { useDashboardStore } from "../../stores/dashboard";
 import { useDeviceStore } from "../../stores/devices";
 import { useZoneStore } from "../../stores/zones";
 import { useToast } from "../../composables/useToast";
-import { resolveIcon } from "../../utils/iconResolver";
-import { LayoutDashboard } from "lucide-vue-next";
+import { resolveIconName } from "../../utils/iconResolver";
+import { Icon } from "@iconify/vue";
 import IconPicker from "./IconPicker.vue";
 import ImagePicker from "./ImagePicker.vue";
 
@@ -372,10 +372,7 @@ async function clearOverride(deviceId: string) {
                     @click="switchTo(db.id)"
                   >
                     <span class="dashboard-icon-inline" @click.stop="openIconPicker(db.id)">
-                      <component
-                        :is="db.icon ? resolveIcon(db.icon) || LayoutDashboard : LayoutDashboard"
-                        :size="16"
-                      />
+                      <Icon :icon="resolveIconName(db.icon) ?? 'mdi:view-dashboard'" :width="16" :height="16" />
                     </span>
                     <span class="dashboard-select-name">{{ db.name }}</span>
                   </button>

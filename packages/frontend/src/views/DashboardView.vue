@@ -249,6 +249,7 @@ const dashboardBgVars = computed(() => {
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
 .dashboard.freeform-mode {

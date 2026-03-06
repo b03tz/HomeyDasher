@@ -25,6 +25,8 @@ import BarChartWidget from "./widgets/BarChartWidget.vue";
 import PieChartWidget from "./widgets/PieChartWidget.vue";
 import MultiLineChartWidget from "./widgets/MultiLineChartWidget.vue";
 import CameraWidget from "./widgets/CameraWidget.vue";
+import BatteryWidget from "./widgets/BatteryWidget.vue";
+import ImageSwitchWidget from "./widgets/ImageSwitchWidget.vue";
 
 const props = defineProps<{
   gridColumns: number;
@@ -402,6 +404,8 @@ function done() {
               <PieChartWidget v-else-if="widget.type === 'pie-chart'" :widget="widget" />
               <MultiLineChartWidget v-else-if="widget.type === 'multi-line-chart'" :widget="widget" />
               <CameraWidget v-else-if="widget.type === 'camera'" :widget="widget" />
+              <BatteryWidget v-else-if="widget.type === 'battery'" :widget="widget" />
+              <ImageSwitchWidget v-else-if="widget.type === 'image-switch'" :widget="widget" />
             </div>
 
             <!-- Drag / settings zones -->

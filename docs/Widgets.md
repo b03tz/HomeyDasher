@@ -1,6 +1,6 @@
 # Widgets
 
-Homey Dasher comes with **20 widget types** organized into four categories: Display, Charts, Control, and Utility. This guide covers how to add, configure, and manage widgets, followed by a detailed reference for every widget type.
+Homey Dasher comes with **22 widget types** organized into four categories: Display, Charts, Control, and Utility. This guide covers how to add, configure, and manage widgets, followed by a detailed reference for every widget type.
 
 ## Adding a Widget
 
@@ -164,6 +164,26 @@ The camera widget automatically connects when the page is visible and disconnect
 
 ---
 
+### Battery
+
+A battery / level indicator that visualizes a numeric value as a filling bar or segmented bars.
+
+| Setting | Description |
+|---------|-------------|
+| Device & Capability | The numeric capability to display |
+| Orientation | **Horizontal** or **Vertical** |
+| Style | **Bars** (segmented) or **Continuous** (smooth fill) |
+| Size | Small, Medium, or Large |
+| Color | Fill color |
+| Unit | Label next to the value |
+| Multiplier | Value multiplier |
+| Min / Max | Range |
+| Decimals | Decimal places |
+
+**Use for:** Battery levels, tank fill levels, any percentage-like value you want shown as a visual bar.
+
+---
+
 ## Chart Widgets
 
 Chart widgets visualize historical data from Homey's Insights system or real-time capability values.
@@ -267,11 +287,12 @@ Control widgets let you interact with your Homey devices — toggle switches, ad
 
 ![Switch widget](images/widget-switch.png)
 
-Toggle buttons for up to 8 on/off devices. Each device can optionally show a slider for a secondary numeric capability.
+Toggle buttons for up to 8 on/off devices. Each device can optionally show a slider for a secondary numeric capability, and each device can have a custom icon from the 7,600+ MDI icon library.
 
 | Setting | Description |
 |---------|-------------|
 | Devices | Up to 8 devices with a boolean (on/off) capability |
+| Per-device icon | Optional — pick from 7,600+ Material Design Icons to replace the default power icon |
 | Per-device slider | Auto-detected: dim, target temperature, or first numeric setable capability |
 
 Tap the toggle to switch on/off. If a slider is shown, drag it to adjust the secondary value (e.g. brightness).
@@ -324,15 +345,31 @@ Select a value from a device's predefined option list.
 
 ---
 
+### Image Switch
+
+Toggle a boolean device with custom images for on and off states. Upload your own images to make a fully visual switch.
+
+| Setting | Description |
+|---------|-------------|
+| Device & Capability | A boolean (on/off) capability |
+| On Image | Image shown when the device is on (upload or URL) |
+| Off Image | Image shown when the device is off (upload or URL) |
+| Chromeless | Hide the widget border and background for a seamless look |
+
+**Use for:** Custom-looking switches — e.g. a fireplace image that toggles a smart plug, or a scene button with a photo.
+
+---
+
 ### Flow Button
 
 ![Flow Button widget](images/widget-button.png)
 
-Trigger one or more Homey flows with a single tap.
+Trigger one or more Homey flows with a single tap. Each flow button can have a custom icon, label, and color.
 
 | Setting | Description |
 |---------|-------------|
 | Flows | Up to 8 flows, each with an optional custom label and button color |
+| Per-flow icon | Optional — pick from 7,600+ Material Design Icons to replace the default play icon |
 
 Tap a button to trigger the flow immediately.
 
@@ -377,7 +414,7 @@ After adding a container:
 3. A full-screen editor opens — add, arrange, and configure widgets just like on the main dashboard
 4. Close the editor to return to the dashboard
 
-All 20 widget types can be placed inside a container, including other containers.
+All 22 widget types can be placed inside a container, including other containers.
 
 **Use for:** Grouping a room's controls together, creating reusable widget clusters, organizing complex dashboards.
 

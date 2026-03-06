@@ -38,6 +38,13 @@ function getAutoColSpan(widget: DashboardWidget): number {
   if (widget.type === "enum") return 2;
   if (widget.type === "text") return 2;
   if (widget.type === "camera") return 4;
+  if (widget.type === "slider") {
+    if (widget.config.orientation === "vertical") return 1;
+    const s = widget.config.size ?? "medium";
+    return s === "small" ? 2 : s === "large" ? 4 : 3;
+  }
+  if (widget.type === "battery") return widget.config.orientation === "horizontal" ? 2 : 1;
+  if (widget.type === "image-switch") return 2;
   return 2;
 }
 
@@ -67,6 +74,9 @@ function getAutoRowSpan(widget: DashboardWidget): number {
   if (widget.type === "weather") return 2;
   if (widget.type === "container") return widget.config.gridRows;
   if (widget.type === "camera") return 3;
+  if (widget.type === "slider") return widget.config.orientation === "vertical" ? 2 : 1;
+  if (widget.type === "battery") return widget.config.orientation === "vertical" ? 2 : 1;
+  if (widget.type === "image-switch") return 2;
   return 1;
 }
 
@@ -97,7 +107,9 @@ export function getDefaultFreeformSize(widget: DashboardWidget): { width: number
     case "number": return { width: 160, height: 100 };
     case "status": return { width: 200, height: 120 };
     case "gauge": return { width: 200, height: 200 };
-    case "slider": return { width: 280, height: 80 };
+    case "slider": return widget.config.orientation === "vertical"
+      ? { width: 80, height: 240 }
+      : { width: 280, height: 80 };
     case "knob": return { width: 200, height: 200 };
     case "button": return { width: 200, height: 120 };
     case "group-status": return { width: 200, height: 120 };
@@ -108,6 +120,8 @@ export function getDefaultFreeformSize(widget: DashboardWidget): { width: number
     case "text": return { width: 200, height: 100 };
     case "dashboard-switch": return { width: 120, height: 100 };
     case "camera": return { width: 400, height: 300 };
+    case "battery": return { width: 180, height: 140 };
+    case "image-switch": return { width: 160, height: 160 };
     default: return { width: 200, height: 120 };
   }
 }

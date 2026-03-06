@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { computed, ref, onBeforeUnmount } from "vue";
-import type { WidgetDeviceRef } from "@homecontrol/shared";
+import type { WidgetDeviceRef, SwitchDisplayMode, SwitchSize, SwitchLabelPosition } from "@homecontrol/shared";
 import { useDeviceStore } from "../../../stores/devices";
+import { Icon } from "@iconify/vue";
+import { resolveIconName } from "../../../utils/iconResolver";
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   deviceRef: WidgetDeviceRef;
-}>();
+  displayMode?: SwitchDisplayMode;
+  size?: SwitchSize;
+  hideLabel?: boolean;
+  labelPosition?: SwitchLabelPosition;
+}>(), {
+  displayMode: "button",
+  size: "medium",
+  hideLabel: false,
+  labelPosition: "right",
+});
 
 const deviceStore = useDeviceStore();
 
@@ -13,9 +24,13 @@ const device = computed(() => deviceStore.devices[props.deviceRef.deviceId]);
 const capability = computed(() => device.value?.capabilities[props.deviceRef.capabilityId]);
 const sliderCapId = computed(() => props.deviceRef.sliderCapabilityId ?? "dim");
 const sliderCapability = computed(() => device.value?.capabilities[sliderCapId.value]);
-const hasSlider = computed(() => !!sliderCapability.value?.setable);
+const hasSlider = computed(() => props.displayMode === "button" && !!sliderCapability.value?.setable);
 const isOn = computed(() => !!capability.value?.value);
 const name = computed(() => device.value ? deviceStore.getDeviceName(props.deviceRef.deviceId) : "Unavailable");
+
+const showLabel = computed(() => !props.hideLabel && props.labelPosition !== "hidden");
+const effectiveLabelPos = computed(() => props.labelPosition ?? "right");
+const iconName = computed(() => resolveIconName(props.deviceRef.icon));
 
 const sliderMin = computed(() => sliderCapability.value?.min ?? 0);
 const sliderMax = computed(() => sliderCapability.value?.max ?? 1);
@@ -25,26 +40,24 @@ const currentSliderValue = computed(() => {
   return typeof v === "number" ? v : sliderMax.value;
 });
 
-// Slider state
+// Slider state (button mode only)
 const sliding = ref(false);
-const sliderValue = ref(0); // 0–1
+const sliderValue = ref(0);
 const btnEl = ref<HTMLElement | null>(null);
 
 let pressTimer: ReturnType<typeof setTimeout> | null = null;
 let didSlide = false;
 
 function onPointerDown(e: PointerEvent) {
-  if (!capability.value) return;
+  if (!capability.value || props.displayMode === "toggle") return;
   didSlide = false;
 
   if (!hasSlider.value) return;
 
   pressTimer = setTimeout(() => {
-    // Long press triggered — enter slider mode
     didSlide = true;
     sliderValue.value = currentSliderValue.value;
     sliding.value = true;
-    // Capture pointer so we track move/up even outside element
     btnEl.value?.setPointerCapture(e.pointerId);
   }, 400);
 }
@@ -53,7 +66,6 @@ function onPointerMove(e: PointerEvent) {
   if (!sliding.value || !btnEl.value) return;
 
   const rect = btnEl.value.getBoundingClientRect();
-  // Map Y position: top of button = max, bottom = min
   const ratio = 1 - (e.clientY - rect.top) / rect.height;
   const clamped = Math.max(0, Math.min(1, ratio));
   sliderValue.value = sliderMin.value + clamped * (sliderMax.value - sliderMin.value);
@@ -66,7 +78,6 @@ function onPointerUp() {
   }
 
   if (sliding.value) {
-    // Apply slider value
     const step = sliderCapability.value?.step;
     let val = sliderValue.value;
     if (step && step > 0) {
@@ -80,7 +91,6 @@ function onPointerUp() {
     return;
   }
 
-  // Normal tap — toggle
   if (!didSlide) {
     toggle();
   }
@@ -115,10 +125,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!-- Toggle mode -->
   <div
+    v-if="displayMode === 'toggle'"
+    class="toggle-row"
+    :class="[`sz-${size}`, `lbl-${effectiveLabelPos}`, { unavailable: !device }]"
+    @click="toggle"
+  >
+    <span v-if="showLabel && effectiveLabelPos === 'above'" class="toggle-label">{{ name }}</span>
+    <div class="toggle-track" :class="{ on: isOn }">
+      <div class="toggle-thumb" />
+    </div>
+    <span v-if="showLabel && effectiveLabelPos === 'right'" class="toggle-label">{{ name }}</span>
+    <span v-if="showLabel && effectiveLabelPos === 'below'" class="toggle-label">{{ name }}</span>
+  </div>
+
+  <!-- Button mode (original) -->
+  <div
+    v-else
     ref="btnEl"
     class="power-btn"
-    :class="{ on: isOn, unavailable: !device, sliding }"
+    :class="[`sz-${size}`, { on: isOn, unavailable: !device, sliding }]"
     :aria-label="`Toggle ${name}`"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
@@ -137,11 +164,12 @@ onBeforeUnmount(() => {
       <span class="dim-value">{{ sliderPercent }}%</span>
     </template>
     <template v-else>
-      <svg class="power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <Icon v-if="iconName" :icon="iconName" class="power-icon" />
+      <svg v-else class="power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="12" y1="2" x2="12" y2="12" />
         <path d="M16.24 7.76a6 6 0 1 1-8.49 0" />
       </svg>
-      <span class="power-label">{{ name }}</span>
+      <span v-if="showLabel" class="power-label">{{ name }}</span>
       <svg v-if="hasSlider" class="dim-indicator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="5" />
         <line x1="12" y1="1" x2="12" y2="3" />
@@ -158,6 +186,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ============================================================
+   BUTTON MODE
+   ============================================================ */
 .power-btn {
   position: relative;
   display: flex;
@@ -251,5 +282,172 @@ onBeforeUnmount(() => {
   height: 14px;
   opacity: 0.4;
   flex-shrink: 0;
+}
+
+/* Button sizes */
+.power-btn.sz-small {
+  padding: 6px 4px;
+  gap: 3px;
+}
+.power-btn.sz-small .power-icon {
+  width: 18px;
+  height: 18px;
+}
+.power-btn.sz-small .power-label {
+  font-size: 0.6rem;
+}
+.power-btn.sz-small .dim-indicator {
+  width: 10px;
+  height: 10px;
+}
+.power-btn.sz-small .dim-value {
+  font-size: 0.9rem;
+}
+
+.power-btn.sz-large {
+  padding: 14px 10px;
+  gap: 10px;
+}
+.power-btn.sz-large .power-icon {
+  width: 42px;
+  height: 42px;
+}
+.power-btn.sz-large .power-label {
+  font-size: 0.95rem;
+}
+.power-btn.sz-large .dim-indicator {
+  width: 18px;
+  height: 18px;
+}
+.power-btn.sz-large .dim-value {
+  font-size: 1.6rem;
+}
+
+/* ============================================================
+   TOGGLE MODE
+   ============================================================ */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+
+.toggle-row.unavailable {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Label position: above / below → stack vertically */
+.toggle-row.lbl-above,
+.toggle-row.lbl-below {
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* --- Toggle: small (was the old medium) --- */
+.toggle-track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--border);
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+
+.toggle-track.on {
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(79, 195, 247, 0.4);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s;
+}
+
+.toggle-track.on .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* --- Toggle small --- */
+.toggle-row.sz-small .toggle-track {
+  width: 56px;
+  height: 30px;
+  border-radius: 15px;
+}
+.toggle-row.sz-small .toggle-thumb {
+  width: 26px;
+  height: 26px;
+}
+.toggle-row.sz-small .toggle-track.on .toggle-thumb {
+  transform: translateX(26px);
+}
+.toggle-row.sz-small .toggle-label {
+  font-size: 0.85rem;
+}
+
+/* --- Toggle medium --- */
+.toggle-row.sz-medium .toggle-track {
+  width: 76px;
+  height: 40px;
+  border-radius: 20px;
+}
+.toggle-row.sz-medium .toggle-thumb {
+  top: 3px;
+  left: 3px;
+  width: 34px;
+  height: 34px;
+}
+.toggle-row.sz-medium .toggle-track.on .toggle-thumb {
+  transform: translateX(36px);
+}
+.toggle-row.sz-medium .toggle-label {
+  font-size: 1.1rem;
+}
+.toggle-row.sz-medium {
+  gap: 12px;
+}
+
+/* --- Toggle large --- */
+.toggle-row.sz-large .toggle-track {
+  width: 100px;
+  height: 52px;
+  border-radius: 26px;
+}
+.toggle-row.sz-large .toggle-thumb {
+  top: 4px;
+  left: 4px;
+  width: 44px;
+  height: 44px;
+}
+.toggle-row.sz-large .toggle-track.on .toggle-thumb {
+  transform: translateX(48px);
+}
+.toggle-row.sz-large .toggle-label {
+  font-size: 1.4rem;
+}
+.toggle-row.sz-large {
+  gap: 16px;
 }
 </style>

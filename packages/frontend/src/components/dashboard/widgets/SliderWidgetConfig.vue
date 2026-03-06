@@ -2,6 +2,7 @@
 import { ref, computed, nextTick } from "vue";
 import { useDeviceStore } from "../../../stores/devices";
 import { useZoneStore } from "../../../stores/zones";
+import type { SliderSize, SliderOrientation } from "@homecontrol/shared";
 
 const props = defineProps<{
   deviceId: string;
@@ -10,6 +11,9 @@ const props = defineProps<{
   min?: number;
   max?: number;
   step?: number;
+  size: SliderSize;
+  orientation: SliderOrientation;
+  hideValue: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,6 +23,9 @@ const emit = defineEmits<{
   "update:min": [v: number | undefined];
   "update:max": [v: number | undefined];
   "update:step": [v: number | undefined];
+  "update:size": [v: SliderSize];
+  "update:orientation": [v: SliderOrientation];
+  "update:hideValue": [v: boolean];
 }>();
 
 const deviceStore = useDeviceStore();
@@ -123,6 +130,26 @@ function parseNum(val: string): number | undefined {
 
     <div class="row">
       <div class="field">
+        <label class="config-label">Size</label>
+        <div class="btn-group">
+          <button v-for="s in (['small', 'medium', 'large'] as SliderSize[])" :key="s" class="btn-option" :class="{ active: size === s }" @click="emit('update:size', s)">{{ s }}</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="config-label">Orientation</label>
+        <div class="btn-group">
+          <button v-for="o in (['horizontal', 'vertical'] as SliderOrientation[])" :key="o" class="btn-option" :class="{ active: orientation === o }" @click="emit('update:orientation', o)">{{ o }}</button>
+        </div>
+      </div>
+    </div>
+
+    <label class="toggle-row">
+      <input type="checkbox" :checked="hideValue" @change="emit('update:hideValue', ($event.target as HTMLInputElement).checked)" />
+      <span class="config-label">Hide value display</span>
+    </label>
+
+    <div class="row">
+      <div class="field">
         <label class="config-label">Unit</label>
         <input type="text" class="text-input" :value="unit" placeholder="e.g. %" @input="emit('update:unit', ($event.target as HTMLInputElement).value)" />
       </div>
@@ -160,4 +187,14 @@ function parseNum(val: string): number | undefined {
   background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; outline: none;
 }
 .text-input:focus { border-color: var(--accent); }
+.btn-group { display: flex; gap: 4px; }
+.btn-option {
+  flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-secondary); color: var(--text-secondary); font-size: 0.8rem;
+  cursor: pointer; text-transform: capitalize; transition: all 0.15s;
+}
+.btn-option:hover { border-color: var(--accent); color: var(--text-primary); }
+.btn-option.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.toggle-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.toggle-row input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
 </style>
