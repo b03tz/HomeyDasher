@@ -115,7 +115,7 @@ function connect() {
   };
 
   ws.onerror = () => {
-    error.value = "WebSocket error — check that go2rtc is running on port 1984.";
+    error.value = "WebSocket error — check that go2rtc is running alongside the app.";
   };
 
   ws.onclose = () => {

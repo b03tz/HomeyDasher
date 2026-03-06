@@ -24,11 +24,12 @@
 - **Background images** — Set custom backgrounds per dashboard or per widget with blur and overlay controls
 - **Backup & restore** — Export and import dashboard configurations as JSON
 - **Dark themed** — Built for always-on wall-mounted displays
-- **Docker ready** — Single container deployment with persistent data
+- **Camera streams** — Live RTSP camera feeds via go2rtc (MSE/WebSocket)
+- **Docker ready** — Deploy with Docker Compose (includes go2rtc sidecar for camera streams)
 
 ### Widget Library
 
-**19 widget types** across four categories:
+**20 widget types** across four categories:
 
 | Display | Charts | Control | Utility |
 |---------|--------|---------|---------|
@@ -38,6 +39,7 @@
 | Group Status | Pie / Doughnut | Flow Button | |
 | Weather | Multi-Line Chart | Enum | |
 | Clock | | | |
+| Camera | | | |
 
 ---
 
@@ -118,24 +120,11 @@ Manage multiple dashboards, configure grid dimensions, set background images wit
 
 ## Installation
 
-### Docker (recommended)
+### Docker Compose (recommended)
 
 The easiest way to run HomeyDasher. A pre-built image is available on GitHub Container Registry.
 
-```bash
-docker run -d --name=homeydasher \
-  -p 3001:3001 \
-  -e HOMEY_ADDRESS=http://YOUR_HOMEY_IP \
-  -e HOMEY_TOKEN=YOUR_HOMEY_API_TOKEN \
-  -e TZ=Europe/Amsterdam \
-  -v homeydasher-data:/app/data \
-  --restart always \
-  ghcr.io/b03tz/homeydasher:latest
-```
-
-HomeyDasher will be available at `http://localhost:3001/`.
-
-#### Docker Compose
+Camera widgets require [go2rtc](https://github.com/AlexxIT/go2rtc) as a sidecar container to transcode RTSP streams. The docker-compose setup below includes everything you need.
 
 Create a `docker-compose.yml`:
 
@@ -152,8 +141,16 @@ services:
       - HOMEY_TOKEN=YOUR_HOMEY_API_TOKEN
       - TZ=Europe/Amsterdam
       - DATA_DIR=/app/data
+      - GO2RTC_URL=http://go2rtc:1984
     volumes:
       - homeydasher-data:/app/data
+    depends_on:
+      - go2rtc
+
+  go2rtc:
+    image: alexxit/go2rtc
+    container_name: go2rtc
+    restart: unless-stopped
 
 volumes:
   homeydasher-data:
@@ -165,46 +162,64 @@ Then run:
 docker compose up -d
 ```
 
+HomeyDasher will be available at `http://localhost:3001/`.
+
+> **Note:** If you don't use camera widgets, you can omit the `go2rtc` service and the `GO2RTC_URL` / `depends_on` lines.
+
 ---
 
 ### Synology NAS
 
-#### Step 1 — Create the data folder
+Synology Container Manager supports Docker Compose via its **Project** feature.
 
-Open **File Station**, navigate to the `docker` folder, and create a new subfolder called `homeydasher` (all lowercase).
+#### Step 1 — Create the project folder
 
-#### Step 2 — Create a scheduled task
+Open **File Station**, navigate to the `docker` folder, and create a subfolder called `homeydasher`.
 
-Go to **Control Panel** > **Task Scheduler** > **Create** > **Scheduled Task** > **User-defined script**.
+Inside that folder, create a file called `docker-compose.yml` with the following contents (replace `YOUR_HOMEY_IP` and `YOUR_HOMEY_API_TOKEN` with your actual values):
 
-Configure the task:
+```yaml
+services:
+  homeydasher:
+    image: ghcr.io/b03tz/homeydasher:latest
+    container_name: homeydasher
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - HOMEY_ADDRESS=http://YOUR_HOMEY_IP
+      - HOMEY_TOKEN=YOUR_HOMEY_API_TOKEN
+      - TZ=Europe/Amsterdam
+      - DATA_DIR=/app/data
+      - GO2RTC_URL=http://go2rtc:1984
+    volumes:
+      - homeydasher-data:/app/data
+    depends_on:
+      - go2rtc
 
-- **Task:** `Install homeydasher`
-- **Enabled:** Unchecked
-- **User:** `root`
-- **Schedule tab:** Select "Run on the following date" (leave the date as-is), set to "Do not repeat"
-- **Task Settings tab:** Check "Send run details by email" and enter your email address
+  go2rtc:
+    image: alexxit/go2rtc
+    container_name: go2rtc
+    restart: unless-stopped
 
-In the **User-defined script** field, paste the following (replace `yourHomeyIP` and `yourHomeyApiToken` with your actual values):
-
-```bash
-docker run -d --name=homeydasher \
--p 3001:3001 \
--e HOMEY_ADDRESS=http://yourhomeyIP \
--e HOMEY_TOKEN=yourHomeyApiToken \
--e TZ=Europe/Amsterdam \
--v /volume1/docker/homeydasher:/app/data \
---restart always \
-ghcr.io/b03tz/homeydasher:latest
+volumes:
+  homeydasher-data:
 ```
 
-Save the task and press **OK** on the warning dialog. It will ask for your DSM password to confirm.
+#### Step 2 — Create a Project in Container Manager
 
-#### Step 3 — Run the task
+1. Open **Container Manager** > **Project**
+2. Click **Create**
+3. Set the project name to `homeydasher`
+4. Set the path to `/volume1/docker/homeydasher`
+5. Select **Use existing docker-compose.yml**
+6. Click **Next**, review the settings, and click **Done**
 
-Click the task and press the **Run** button at the top (or right-click > Run), then click **OK**.
+Container Manager will pull the images and start both containers.
 
-HomeyDasher will now be installed and available at `http://YOUR_NAS_IP:3001/`.
+#### Step 3 — Open the dashboard
+
+HomeyDasher will be available at `http://YOUR_NAS_IP:3001/`.
 
 ---
 

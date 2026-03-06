@@ -1,6 +1,6 @@
 # Widgets
 
-Homey Dasher comes with **19 widget types** organized into four categories: Display, Charts, Control, and Utility. This guide covers how to add, configure, and manage widgets, followed by a detailed reference for every widget type.
+Homey Dasher comes with **20 widget types** organized into four categories: Display, Charts, Control, and Utility. This guide covers how to add, configure, and manage widgets, followed by a detailed reference for every widget type.
 
 ## Adding a Widget
 
@@ -145,6 +145,22 @@ Analog or digital clock with optional date display.
 | 24-Hour Format | Use 24-hour time instead of AM/PM |
 
 **Use for:** Wall-mounted dashboards where a clock is handy.
+
+---
+
+### Camera
+
+Live video stream from an RTSP camera, transcoded via [go2rtc](https://github.com/AlexxIT/go2rtc) and displayed using MSE (Media Source Extensions).
+
+| Setting | Description |
+|---------|-------------|
+| RTSP URL | The camera's RTSP stream URL (e.g. `rtsp://192.168.1.50/live0`) |
+
+The camera widget automatically connects when the page is visible and disconnects when you switch to another tab to save resources. If the stream fails to connect, a retry button is shown.
+
+> **Requires go2rtc:** Camera widgets need a go2rtc instance running alongside the app. When using Docker Compose, this is included automatically. See the [Getting Started](Getting-Started.md) guide for setup instructions.
+
+**Use for:** Security cameras, baby monitors, doorbell cameras — any RTSP-capable camera on your network.
 
 ---
 
@@ -361,7 +377,7 @@ After adding a container:
 3. A full-screen editor opens — add, arrange, and configure widgets just like on the main dashboard
 4. Close the editor to return to the dashboard
 
-All 19 widget types can be placed inside a container, including other containers.
+All 20 widget types can be placed inside a container, including other containers.
 
 **Use for:** Grouping a room's controls together, creating reusable widget clusters, organizing complex dashboards.
 

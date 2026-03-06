@@ -12,7 +12,7 @@ Homey Dasher is a customizable, real-time web dashboard for **Homey Pro**. It co
 
 1. **[Getting Started](Getting-Started.md)** — Prerequisites, generating an API token, and installation (Docker, Synology, manual)
 2. **[Dashboard Management](Dashboard-Management.md)** — Creating dashboards, switching between them, layout modes, grid settings, and backgrounds
-3. **[Widgets](Widgets.md)** — All 19 widget types explained, how to add/edit/remove widgets, and every configuration option
+3. **[Widgets](Widgets.md)** — All 20 widget types explained, how to add/edit/remove widgets, and every configuration option
 4. **[Theming](Theming.md)** — Per-widget colors, background images, and copy/paste themes
 5. **[Backup and Restore](Backup-and-Restore.md)** — Exporting and importing your dashboard configurations
 
@@ -21,7 +21,7 @@ Homey Dasher is a customizable, real-time web dashboard for **Homey Pro**. It co
 | Feature | Details |
 |---------|---------|
 | Real-time updates | Device states sync instantly via Socket.io |
-| Widget library | 19 types across Display, Charts, Control, and Utility categories |
+| Widget library | 20 types across Display, Charts, Control, and Utility categories |
 | Layout modes | Grid (snap-to-grid) and Freeform (pixel-perfect positioning) |
 | Multiple dashboards | Each with its own layout, widgets, and background |
 | Per-widget theming | Custom colors, background images, blur, and overlay per widget |
